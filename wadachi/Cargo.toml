@@ -1,0 +1,28 @@
+[package]
+name = "wadachi"
+description = "Wadachi (轍 — \"the well-worn rut\") — a native typed-Rust directory frecency primitive for the pleme-io fleet. Records the directories you walk, ranks them by frequency+recency through the shared wadachi-spec core, and serves a fuzzy `cd` from a SQLite store that frost, skim-cd and mado all share. A zoxide replacement, not a wrapper."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+categories = ["command-line-utilities", "filesystem"]
+keywords = ["frecency", "cd", "zoxide", "directory", "navigation"]
+
+[[bin]]
+name = "wadachi"
+path = "src/bin/wadachi.rs"
+
+[dependencies]
+wadachi-spec = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+dirs = "6"
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[lints]
+workspace = true

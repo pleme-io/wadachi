@@ -1,0 +1,3 @@
+# Typed-emission ban (org-level ★★ TYPED EMISSION): compose strings through
+# typed surfaces (Display/write!/typed builders), never std::format!.
+disallowed-macros = ["std::format"]

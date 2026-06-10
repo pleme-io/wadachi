@@ -1,0 +1,21 @@
+[package]
+name = "wadachi-spec"
+description = "Wadachi (轍) frecency-ranking core — the typed-spec triplet (Rust border + authored Lisp spec + interpreter with a mockable Environment). One ranking formula, shared by every consumer (directories, command history) so they cannot drift."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+categories = ["algorithms", "data-structures"]
+keywords = ["frecency", "ranking", "recency", "frequency", "spec"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true
