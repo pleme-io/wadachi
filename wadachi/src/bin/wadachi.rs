@@ -9,7 +9,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 
-use wadachi::config::WadachiConfig;
+use pleme_io_wadachi::config::WadachiConfig;
 
 #[derive(Parser)]
 #[command(name = "wadachi", version, about = "directory frecency — the well-worn rut (轍)")]
@@ -55,14 +55,14 @@ fn main() -> Result<()> {
                     .to_string_lossy()
                     .into_owned(),
             };
-            wadachi::record(&p)?;
+            pleme_io_wadachi::record(&p)?;
         }
         Cmd::Query { needle, limit } => {
-            for r in wadachi::top_n(&needle.unwrap_or_default(), limit)? {
+            for r in pleme_io_wadachi::top_n(&needle.unwrap_or_default(), limit)? {
                 println!("{:.4}\t{}", r.score, r.path.display());
             }
         }
-        Cmd::Resolve { needle } => match wadachi::resolve(&needle)? {
+        Cmd::Resolve { needle } => match pleme_io_wadachi::resolve(&needle)? {
             Some(p) => println!("{}", p.display()),
             None => std::process::exit(1),
         },

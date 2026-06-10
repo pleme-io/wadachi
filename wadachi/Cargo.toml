@@ -14,10 +14,11 @@ readme = "README.md"
 categories = ["command-line-utilities", "filesystem"]
 keywords = ["frecency", "cd", "zoxide", "directory", "navigation"]
 
-[lib]
-name = "wadachi"
-path = "src/lib.rs"
-
+# NOTE: the lib crate name is the package-derived `pleme_io_wadachi` (no [lib]
+# name override). A lib name ≠ package name breaks substrate's gen lockfile-
+# builder: gen-cargo encodes consumers' `--extern wadachi=libwadachi-*` but the
+# builder emits `libpleme_io_wadachi-*` → "extern location does not exist".
+# Consumers therefore `use pleme_io_wadachi`. The BINARY stays `wadachi`.
 [[bin]]
 name = "wadachi"
 path = "src/bin/wadachi.rs"

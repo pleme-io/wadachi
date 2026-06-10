@@ -22,7 +22,7 @@
 //!
 //! ```
 //! use wadachi_spec::FrecencyRankingSpec;
-//! use wadachi::{store::{DirStore, MemDirStore}, query};
+//! use pleme_io_wadachi::{store::{DirStore, MemDirStore}, query};
 //! let store = MemDirStore::new();
 //! store.record("/code/github/pleme-io/wadachi").unwrap();
 //! let hit = query::top_match(&store, &FrecencyRankingSpec::skimtab_parity(), "wadachi").unwrap();
