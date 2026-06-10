@@ -400,6 +400,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
+name = "pleme-io-wadachi"
+version = "0.1.2"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "dirs",
+ "rusqlite",
+ "serde",
+ "wadachi-spec",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -571,21 +584,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
-name = "wadachi"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "dirs",
- "rusqlite",
- "serde",
- "wadachi-spec",
-]
-
-[[package]]
 name = "wadachi-spec"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "serde",
