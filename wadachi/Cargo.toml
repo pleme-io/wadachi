@@ -1,5 +1,8 @@
 [package]
-name = "wadachi"
+# crates.io package name is pleme-io-prefixed because the bare `wadachi` name is
+# already taken upstream. The lib is still imported as `wadachi` and the binary
+# is still `wadachi` (see [lib]/[[bin]] below) — only the registry name changes.
+name = "pleme-io-wadachi"
 description = "Wadachi (轍 — \"the well-worn rut\") — a native typed-Rust directory frecency primitive for the pleme-io fleet. Records the directories you walk, ranks them by frequency+recency through the shared wadachi-spec core, and serves a fuzzy `cd` from a SQLite store that frost, skim-cd and mado all share. A zoxide replacement, not a wrapper."
 version.workspace = true
 edition.workspace = true
@@ -10,6 +13,10 @@ homepage.workspace = true
 readme = "README.md"
 categories = ["command-line-utilities", "filesystem"]
 keywords = ["frecency", "cd", "zoxide", "directory", "navigation"]
+
+[lib]
+name = "wadachi"
+path = "src/lib.rs"
 
 [[bin]]
 name = "wadachi"

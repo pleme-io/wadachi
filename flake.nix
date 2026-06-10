@@ -21,7 +21,8 @@
       inherit nixpkgs crate2nix flake-utils;
     }) {
       toolName = "wadachi";
-      packageName = "wadachi";
+      # crate2nix selects the member by its Cargo package name.
+      packageName = "pleme-io-wadachi";
       src = self;
       repo = "pleme-io/wadachi";
     };
