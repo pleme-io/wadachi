@@ -50,9 +50,13 @@
                 Run the ashiato-niwa background directory indexer
                 (`wadachi indexd`) as a user-level launchd agent (Darwin) /
                 systemd user unit (Linux). Sets
-                services.wadachi.daemon.enable by default; use
-                services.wadachi.daemon.{extraArgs,environment} for knobs
-                (e.g. WADACHI_TIER / WADACHI_DB).
+                services.wadachi.daemon.enable by default — but the
+                module-trio gates ALL config (this alias included) on
+                services.wadachi.enable, so BOTH switches are required:
+                  services.wadachi.enable = true;
+                  services.wadachi.indexer.enable = true;
+                Use services.wadachi.daemon.{extraArgs,environment} for
+                knobs (e.g. WADACHI_TIER / WADACHI_DB).
               '';
             };
           };
