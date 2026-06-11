@@ -1,5 +1,5 @@
 //! In-memory directory store — the test seam. Same observable behavior as
-//! [`super::DirFrecencyDb`] without touching disk or SQLite.
+//! [`super::DirFrecencyDb`] without touching disk or `SQLite`.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -68,5 +68,24 @@ impl DirStore for MemDirStore {
             }
         }
         Ok(entries)
+    }
+
+    fn discovered_under(&self, prefix: &str) -> anyhow::Result<Vec<String>> {
+        Ok(self
+            .discovered
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|p| super::path_is_same_or_under(p, prefix))
+            .cloned()
+            .collect())
+    }
+
+    fn remove_discovered(&self, path: &str) -> anyhow::Result<()> {
+        self.discovered
+            .lock()
+            .unwrap()
+            .retain(|p| !super::path_is_same_or_under(p, path));
+        Ok(())
     }
 }

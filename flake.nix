@@ -16,6 +16,17 @@
   # buildRustPackage invocations. `packageName = "wadachi"` selects the CLI
   # member; `wadachi-spec` is built as its workspace dependency. Same contract
   # as pleme-io/frost.
+  #
+  # `module` engages substrate's module-trio macro: one spec emits the
+  # homeManagerModules / nixosModules / darwinModules outputs. The HM surface
+  # is the codesearch/zoekt-mcp "daemon maintains the local db that powers
+  # search" shape:
+  #
+  #   services.wadachi.enable         — install the CLI (the shared store bus)
+  #   services.wadachi.indexer.enable — run `wadachi indexd` (ashiato-niwa) as
+  #                                     a launchd agent (Darwin) / systemd user
+  #                                     unit (Linux); alias that drives
+  #                                     services.wadachi.daemon.enable.
   outputs = { self, nixpkgs, crate2nix, flake-utils, substrate, ... }:
     (import "${substrate}/lib/rust-workspace-release-flake.nix" {
       inherit nixpkgs crate2nix flake-utils;
@@ -25,5 +36,30 @@
       packageName = "pleme-io-wadachi";
       src = self;
       repo = "pleme-io/wadachi";
+      module = {
+        description = "wadachi (轍) directory frecency — shared store CLI + ashiato-niwa background indexer";
+        hmNamespace = "services";
+        withUserDaemon = true;
+        userDaemonSubcommand = "indexd";
+        extraHmOptions = lib: {
+          indexer = {
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
+                Run the ashiato-niwa background directory indexer
+                (`wadachi indexd`) as a user-level launchd agent (Darwin) /
+                systemd user unit (Linux). Sets
+                services.wadachi.daemon.enable by default; use
+                services.wadachi.daemon.{extraArgs,environment} for knobs
+                (e.g. WADACHI_TIER / WADACHI_DB).
+              '';
+            };
+          };
+        };
+        extraHmConfigFn = { cfg, lib, ... }: {
+          services.wadachi.daemon.enable = lib.mkDefault (cfg.indexer.enable or false);
+        };
+      };
     };
 }

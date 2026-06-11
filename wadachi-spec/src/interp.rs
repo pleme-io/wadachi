@@ -40,6 +40,11 @@ struct Acc {
 /// # Errors
 /// Returns [`SpecError::Interp`] if the phase pipeline is malformed (e.g. a
 /// compute phase runs before `LoadEntries`).
+// `entries` is deliberately by-value: the published API hands ownership to
+// the interpreter, and a spec may legally contain `LoadEntries` more than
+// once (each load re-seeds from the same input). Switching to `&[DirEntry]`
+// would be a breaking change to a crates.io-published signature.
+#[allow(clippy::needless_pass_by_value)]
 pub fn apply(
     spec: &FrecencyRankingSpec,
     entries: Vec<DirEntry>,

@@ -96,7 +96,12 @@ fn discovered_only_is_floored_and_below_recent_visits() {
     let indexed = ranked.iter().find(|r| r.path.to_str() == Some("/indexed")).unwrap();
     let recent = ranked.iter().find(|r| r.path.to_str() == Some("/recent")).unwrap();
     // Discovered-only is floored to exactly epsilon — rankable, but the floor.
-    assert_eq!(indexed.score, spec.indexed_epsilon);
+    // Exact float equality is the point: `FloorIndexed` *assigns* the epsilon
+    // (no arithmetic), so bit-identity is the contract under test.
+    #[allow(clippy::float_cmp)]
+    {
+        assert_eq!(indexed.score, spec.indexed_epsilon);
+    }
     // A reasonably-recent real visit outranks a fresh discovery. (Visits older
     // than the crossover decay below the floor and are effectively forgotten,
     // which is the intended frecency behavior.)

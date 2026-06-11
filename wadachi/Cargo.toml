@@ -31,6 +31,22 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
 rusqlite = { version = "0.32", features = ["bundled"] }
+# Cargo features activate globally per-target — turning on a notify macOS
+# backend feature here would add the apple-only backend crate as an
+# unconditional dep for every target (fsevent-sys fails to compile on Linux).
+# The only correct seam is target-gating the feature itself: Linux gets bare
+# notify (inotify, its only Linux backend); macOS opts into FSEvents below.
+# Same proven pattern as pleme-io/shikumi.
+notify = { version = "8.2", default-features = false }
+
+# macOS opts into the FSEvents backend (NOT kqueue — kqueue burns one fd per
+# watched dir, untenable for the indexer's recursive watch over ~/code).
+[target.'cfg(target_os = "macos")'.dependencies]
+notify = { version = "8.2", default-features = false, features = ["macos_fsevent"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tempfile = "3"
 
 [lints]
 workspace = true

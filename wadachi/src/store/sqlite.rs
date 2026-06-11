@@ -11,7 +11,7 @@ use wadachi_spec::DirEntry;
 
 use super::DirStore;
 
-/// SQLite directory-frecency database. Real-visit events live in `visits`
+/// `SQLite` directory-frecency database. Real-visit events live in `visits`
 /// (an append-only log); indexer-discovered dirs live in a *separate* upsert
 /// table `discovered`, so an indexed dir gets only the floor score and can
 /// never pollute real-visit frequency.
@@ -24,7 +24,7 @@ impl DirFrecencyDb {
     /// directory and schema exist.
     ///
     /// # Errors
-    /// Fails if the parent dir can't be created or SQLite can't open/migrate.
+    /// Fails if the parent dir can't be created or `SQLite` can't open/migrate.
     pub fn open(path: &Path) -> anyhow::Result<Self> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
@@ -39,7 +39,7 @@ impl DirFrecencyDb {
     /// Open a private in-memory database (handy for tests of the real schema).
     ///
     /// # Errors
-    /// Fails if SQLite can't initialize.
+    /// Fails if `SQLite` can't initialize.
     pub fn open_in_memory() -> anyhow::Result<Self> {
         let conn = Connection::open_in_memory()?;
         Self::migrate(&conn)?;
@@ -125,5 +125,32 @@ impl DirStore for DirFrecencyDb {
         }
 
         Ok(entries)
+    }
+
+    fn discovered_under(&self, prefix: &str) -> anyhow::Result<Vec<String>> {
+        // Subtree match via byte-range, not LIKE — paths containing `%`/`_`
+        // would corrupt a LIKE pattern. `'0'` is the byte after `'/'`, so
+        // `prefix || '/' <= path < prefix || '0'` is exactly "under prefix"
+        // under SQLite's default binary collation.
+        let mut stmt = self.conn.prepare(
+            "SELECT path FROM discovered
+             WHERE path = ?1 OR (path >= ?1 || '/' AND path < ?1 || '0')",
+        )?;
+        let rows = stmt.query_map([prefix], |r| r.get::<_, String>(0))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row?);
+        }
+        Ok(out)
+    }
+
+    fn remove_discovered(&self, path: &str) -> anyhow::Result<()> {
+        // Same byte-range subtree match as `discovered_under`.
+        self.conn.execute(
+            "DELETE FROM discovered
+             WHERE path = ?1 OR (path >= ?1 || '/' AND path < ?1 || '0')",
+            [path],
+        )?;
+        Ok(())
     }
 }

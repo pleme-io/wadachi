@@ -2,7 +2,7 @@
 //!
 //! frost writes a row on every `cd`; mado writes on every OSC-7 cwd; the
 //! background indexer upserts discovered dirs; skim-cd and the MCP layer read.
-//! No IPC, no daemon required for the core loop — one SQLite file (WAL mode).
+//! No IPC, no daemon required for the core loop — one `SQLite` file (WAL mode).
 //!
 //! Ranking never lives here: [`DirStore::entries`] loads the candidates and
 //! [`crate::query`] feeds them through `wadachi_spec::apply`. The store owns
@@ -40,4 +40,30 @@ pub trait DirStore {
     /// # Errors
     /// Propagates storage failures.
     fn entries(&self) -> anyhow::Result<Vec<DirEntry>>;
+
+    /// Every discovered path equal to or under `prefix` (path-component-wise,
+    /// not raw string prefix). The indexer's prune pass reads this scoped to
+    /// the root it just re-walked, so staleness stays bounded per root.
+    ///
+    /// # Errors
+    /// Propagates storage failures.
+    fn discovered_under(&self, prefix: &str) -> anyhow::Result<Vec<String>>;
+
+    /// Remove `path` *and its entire subtree* from the discovered set (a
+    /// deleted dir takes its children with it). Idempotent — removing an
+    /// absent path is a no-op. Never touches `visits`.
+    ///
+    /// # Errors
+    /// Propagates storage failures.
+    fn remove_discovered(&self, path: &str) -> anyhow::Result<()>;
+}
+
+/// `true` when `candidate` is `prefix` itself or lives under it as a path
+/// (component-boundary-aware: `/a/bc` is NOT under `/a/b`).
+#[must_use]
+pub fn path_is_same_or_under(candidate: &str, prefix: &str) -> bool {
+    candidate == prefix
+        || candidate
+            .strip_prefix(prefix)
+            .is_some_and(|rest| rest.starts_with('/'))
 }

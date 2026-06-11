@@ -2,7 +2,7 @@
 //!
 //! This crate is **zero-I/O on purpose**: it owns exactly one thing — *how a
 //! path's worn-ness is scored from when it was visited* — and nothing else
-//! (no SQLite, no filesystem, no clock except behind a trait). That lets every
+//! (no `SQLite`, no filesystem, no clock except behind a trait). That lets every
 //! consumer depend on it without dragging in storage: `wadachi`'s directory
 //! store, skim-tab's command history, and a zoxide import all rank through
 //! [`apply`] so there is exactly one formula and they cannot drift.

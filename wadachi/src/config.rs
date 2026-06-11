@@ -44,25 +44,71 @@ impl ConfigTier {
     }
 }
 
+/// One tree the indexer walks: where to start and how deep to go.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IndexerRoot {
+    /// Absolute directory the walk starts from (the root itself is not
+    /// recorded — its *descendants* are the jump targets).
+    pub path: PathBuf,
+    /// How many levels below `path` are collected (1 = direct children only).
+    pub max_depth: usize,
+}
+
+impl IndexerRoot {
+    /// A root at `path` collecting up to `max_depth` levels of descendants.
+    #[must_use]
+    pub fn new(path: impl Into<PathBuf>, max_depth: usize) -> Self {
+        Self { path: path.into(), max_depth }
+    }
+}
+
+/// The `ashiato-niwa` background-indexer group — everything the walker, the
+/// `notify` watcher and the prune pass need.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct IndexerConfig {
+    /// Whether the background indexer runs (gates the HM daemon, not the
+    /// explicit `wadachi index` / `wadachi indexd` CLI invocations).
+    pub enabled: bool,
+    /// Directory trees walked to surface never-visited jump targets, each
+    /// with its own depth bound (deepest matching root wins for events).
+    pub roots: Vec<IndexerRoot>,
+    /// Directory *names* never descended into (`.git`, `node_modules`, …).
+    pub ignore_names: Vec<String>,
+    /// When `false` (the default) hidden dirs (`.`-prefixed) are skipped.
+    pub index_hidden: bool,
+    /// Quiet window before a batch of `notify` events is flushed to the store.
+    pub debounce_ms: u64,
+    /// Seconds between gate-checked re-walk passes (the prune staleness bound).
+    pub rewalk_interval_secs: u64,
+    /// Bounded concurrent root walks (the typed work-queue's worker count).
+    pub concurrency: usize,
+}
+
+impl IndexerConfig {
+    /// The documented floor — off, no roots, no opinions.
+    #[must_use]
+    pub fn bare() -> Self {
+        Self {
+            enabled: false,
+            roots: Vec::new(),
+            ignore_names: Vec::new(),
+            index_hidden: false,
+            debounce_ms: 0,
+            rewalk_interval_secs: 0,
+            concurrency: 1,
+        }
+    }
+}
+
 /// Where wadachi keeps its state and how it ranks / indexes.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WadachiConfig {
-    /// Path to the SQLite frecency database — the shared inter-process bus.
+    /// Path to the `SQLite` frecency database — the shared inter-process bus.
     pub db_path: PathBuf,
     /// Name of the [`wadachi_spec::FrecencyRankingSpec`] instance to rank with.
     pub ranking_instance: String,
-    /// Whether the aggressive background indexer runs.
-    pub indexer_enabled: bool,
-    /// Directory trees the indexer walks to surface never-visited jump targets.
-    pub indexer_roots: Vec<PathBuf>,
-    /// Directory names the indexer skips (also honors per-repo `.gitignore`).
-    pub ignore_globs: Vec<String>,
-    /// Max walk depth (0 = unbounded only at `bare`).
-    pub max_depth: usize,
-    /// Seconds between periodic re-index passes.
-    pub indexer_interval_secs: u64,
-    /// Bounded concurrent walks.
-    pub indexer_concurrency: usize,
+    /// The `ashiato-niwa` background-indexer group.
+    pub indexer: IndexerConfig,
     /// Cap on stored entries (0 = uncapped).
     pub max_entries: usize,
     /// Visits older than this are GC-eligible (0 = never).
@@ -78,49 +124,63 @@ impl WadachiConfig {
         Self {
             db_path: default_db_path(),
             ranking_instance: "skimtab-parity".to_owned(),
-            indexer_enabled: false,
-            indexer_roots: Vec::new(),
-            ignore_globs: Vec::new(),
-            max_depth: 0,
-            indexer_interval_secs: 0,
-            indexer_concurrency: 1,
+            indexer: IndexerConfig::bare(),
             max_entries: 0,
             cleanup_max_age_days: 0.0,
         }
     }
 
     /// Tier 1 — `bare` + runtime autodetect: the db honors `$XDG_DATA_HOME`,
-    /// indexer roots are the `~/code/${service}/${org}` workspace dirs, and
-    /// concurrency tracks the core count.
+    /// indexer roots are the `~/code/${service}/${org}` workspace dirs (each
+    /// bounded to repo + 3 levels), and concurrency tracks the core count.
     #[must_use]
     pub fn discovered() -> Self {
         let mut c = Self::bare();
         c.db_path = default_db_path();
-        c.indexer_roots = discover_workspace_roots();
-        c.indexer_concurrency = std::thread::available_parallelism().map_or(1, |n| n.get());
+        c.indexer.roots = discover_workspace_roots()
+            .into_iter()
+            .map(|p| IndexerRoot::new(p, 4))
+            .collect();
+        c.indexer.concurrency =
+            std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
         c
     }
 
-    /// Tier 2 — `discovered` + curated defaults: the indexer is on, `~` and
-    /// `~/code` are added to the roots, the standard ignore set + bounds apply.
+    /// Tier 2 — `discovered` + curated defaults: the indexer is on, the roots
+    /// are *replaced* by the curated pair (`~/code` deep + `$HOME` shallow —
+    /// `~/code` at depth 6 already covers every `service/org/repo` workspace,
+    /// so keeping the discovered org roots would only duplicate watches), the
+    /// standard ignore set + bounds apply.
     #[must_use]
     pub fn prescribed_default() -> Self {
         let mut c = Self::discovered();
-        c.indexer_enabled = true;
+        c.indexer.enabled = true;
         if let Some(home) = dirs::home_dir() {
-            c.indexer_roots.push(home.join("code"));
-            c.indexer_roots.push(home);
+            c.indexer.roots = vec![
+                IndexerRoot::new(home.join("code"), 6),
+                IndexerRoot::new(home, 2),
+            ];
         }
-        c.ignore_globs = [
-            ".git", "node_modules", "target", "__pycache__", ".direnv", "result",
-            ".cargo", ".rustup",
+        c.indexer.ignore_names = [
+            ".git",
+            "node_modules",
+            "target",
+            "__pycache__",
+            ".direnv",
+            ".cache",
+            "result",
+            ".cargo",
+            ".rustup",
+            "Library",
+            ".Trash",
         ]
         .iter()
         .map(|s| (*s).to_owned())
         .collect();
-        c.max_depth = 8;
-        c.indexer_interval_secs = 900;
-        c.indexer_concurrency = c.indexer_concurrency.max(8);
+        c.indexer.index_hidden = false;
+        c.indexer.debounce_ms = 500;
+        c.indexer.rewalk_interval_secs = 900;
+        c.indexer.concurrency = c.indexer.concurrency.max(8);
         c.max_entries = 50_000;
         c.cleanup_max_age_days = 180.0;
         c

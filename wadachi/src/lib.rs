@@ -1,6 +1,6 @@
 //! `wadachi` (轍) — a native typed-Rust **directory frecency** primitive for
 //! the pleme-io fleet: it records the directories you walk and serves a fuzzy,
-//! frecency-ranked `cd` from a SQLite store that frost, skim-cd and mado all
+//! frecency-ranked `cd` from a `SQLite` store that frost, skim-cd and mado all
 //! share. A zoxide *replacement*, not a wrapper.
 //!
 //! ## The in-process facade — one writer, many readers
@@ -30,10 +30,11 @@
 //! ```
 
 pub mod config;
+pub mod indexer;
 pub mod query;
 pub mod store;
 
-pub use config::{ConfigTier, WadachiConfig};
+pub use config::{ConfigTier, IndexerConfig, IndexerRoot, WadachiConfig};
 pub use store::{DirFrecencyDb, DirStore, MemDirStore};
 
 // Re-export the shared spec so consumers depend on one crate.
@@ -48,8 +49,7 @@ use wadachi_spec::{FrecencyRankingSpec, RankedDir};
 #[must_use]
 pub fn runtime_db_path() -> PathBuf {
     std::env::var("WADACHI_DB")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| config::default_db_path())
+        .map_or_else(|_| config::default_db_path(), PathBuf::from)
 }
 
 /// The ranking spec the hot path uses: `WADACHI_RANKING` or the fleet default.

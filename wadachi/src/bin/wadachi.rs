@@ -4,12 +4,15 @@
 //! - `wadachi add [PATH]`         record a visit (default: cwd)
 //! - `wadachi query [NEEDLE]`     ranked "score<TAB>path"
 //! - `wadachi resolve NEEDLE`     the single best path (exit 1 if none) — smart-cd
+//! - `wadachi index`              one-shot full indexer pass (walk + upsert + prune)
+//! - `wadachi indexd`             ashiato-niwa daemon: initial walk + notify watch loop
 //! - `wadachi config-show [TIER]` effective config (bare | discovered | default)
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 
 use pleme_io_wadachi::config::WadachiConfig;
+use pleme_io_wadachi::{indexer, DirFrecencyDb};
 
 #[derive(Parser)]
 #[command(name = "wadachi", version, about = "directory frecency — the well-worn rut (轍)")]
@@ -38,6 +41,11 @@ enum Cmd {
         /// Case-insensitive substring.
         needle: String,
     },
+    /// One-shot full indexer pass over the configured roots (upsert + prune).
+    Index,
+    /// Run the ashiato-niwa background indexer daemon: one initial full walk,
+    /// then a notify watcher plus gate-checked periodic re-walks.
+    Indexd,
     /// Show the effective configuration for a tier (default: the active tier).
     ConfigShow {
         /// `bare` | `discovered` | `default`. Omit for the WADACHI_TIER-active tier.
@@ -66,6 +74,17 @@ fn main() -> Result<()> {
             Some(p) => println!("{}", p.display()),
             None => std::process::exit(1),
         },
+        Cmd::Index => {
+            let cfg = WadachiConfig::active();
+            let store = DirFrecencyDb::open(&cfg.db_path)?;
+            let summary = indexer::index_once(&store, &cfg.indexer)?;
+            println!("{summary}");
+        }
+        Cmd::Indexd => {
+            let cfg = WadachiConfig::active();
+            let store = DirFrecencyDb::open(&cfg.db_path)?;
+            indexer::run_daemon(&store, &cfg.indexer, |pass| println!("{pass}"))?;
+        }
         Cmd::ConfigShow { tier } => {
             let cfg = match tier.as_deref() {
                 Some("bare") => WadachiConfig::bare(),
@@ -80,17 +99,18 @@ fn main() -> Result<()> {
 }
 
 fn print_config(c: &WadachiConfig) {
-    println!("db_path               {}", c.db_path.display());
-    println!("ranking_instance      {}", c.ranking_instance);
-    println!("indexer_enabled       {}", c.indexer_enabled);
-    println!("indexer_roots         {} dirs", c.indexer_roots.len());
-    for r in &c.indexer_roots {
-        println!("                        {}", r.display());
+    println!("db_path                       {}", c.db_path.display());
+    println!("ranking_instance              {}", c.ranking_instance);
+    println!("indexer.enabled               {}", c.indexer.enabled);
+    println!("indexer.roots                 {} dirs", c.indexer.roots.len());
+    for r in &c.indexer.roots {
+        println!("                                {} (depth {})", r.path.display(), r.max_depth);
     }
-    println!("ignore_globs          {}", c.ignore_globs.join(" "));
-    println!("max_depth             {}", c.max_depth);
-    println!("indexer_interval_secs {}", c.indexer_interval_secs);
-    println!("indexer_concurrency   {}", c.indexer_concurrency);
-    println!("max_entries           {}", c.max_entries);
-    println!("cleanup_max_age_days  {}", c.cleanup_max_age_days);
+    println!("indexer.ignore_names          {}", c.indexer.ignore_names.join(" "));
+    println!("indexer.index_hidden          {}", c.indexer.index_hidden);
+    println!("indexer.debounce_ms           {}", c.indexer.debounce_ms);
+    println!("indexer.rewalk_interval_secs  {}", c.indexer.rewalk_interval_secs);
+    println!("indexer.concurrency           {}", c.indexer.concurrency);
+    println!("max_entries                   {}", c.max_entries);
+    println!("cleanup_max_age_days          {}", c.cleanup_max_age_days);
 }
