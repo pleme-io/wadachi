@@ -36,5 +36,7 @@ pub mod interp;
 pub mod spec;
 
 pub use env::{FrecencyEnvironment, MockEnvironment, RealEnvironment};
-pub use interp::{apply, SpecError};
-pub use spec::{DecayKind, DirEntry, FrecencyRankingSpec, RankPhase, RankedDir};
+pub use interp::{apply, apply_matched, SpecError};
+pub use spec::{
+    DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile, RankPhase, RankedDir,
+};

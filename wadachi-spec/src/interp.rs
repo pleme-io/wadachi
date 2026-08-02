@@ -37,6 +37,10 @@ struct Acc {
 
 /// Rank `entries` according to `spec`, using `env` for the current time.
 ///
+/// Equivalent to [`apply_matched`] with an empty needle — the needle-driven
+/// phases (`MatchNeedle`, `CollapseDescendants`) are defined to be no-ops in
+/// that case, so this published signature keeps its original behavior exactly.
+///
 /// # Errors
 /// Returns [`SpecError::Interp`] if the phase pipeline is malformed (e.g. a
 /// compute phase runs before `LoadEntries`).
@@ -48,6 +52,27 @@ struct Acc {
 pub fn apply(
     spec: &FrecencyRankingSpec,
     entries: Vec<DirEntry>,
+    env: &impl FrecencyEnvironment,
+) -> Result<Vec<RankedDir>, SpecError> {
+    apply_matched(spec, entries, "", env)
+}
+
+/// Rank `entries` against `needle` according to `spec`.
+///
+/// This is the full entry point: *matching* is a phase of the pipeline, not
+/// a filter a caller applies beforehand. Before this existed, every consumer
+/// pre-filtered with its own `path.contains(needle)` — an untyped step that
+/// no spec governed and no matrix tested, and the reason `cd ni` answered
+/// with `akeyless-commu`**`ni`**`ty`.
+///
+/// # Errors
+/// Returns [`SpecError::Interp`] if the phase pipeline is malformed (e.g. a
+/// compute phase runs before `LoadEntries`).
+#[allow(clippy::needless_pass_by_value)]
+pub fn apply_matched(
+    spec: &FrecencyRankingSpec,
+    entries: Vec<DirEntry>,
+    needle: &str,
     env: &impl FrecencyEnvironment,
 ) -> Result<Vec<RankedDir>, SpecError> {
     let now = env.now();
@@ -108,9 +133,27 @@ pub fn apply(
                     }
                 }
             }
+            RankPhase::MatchNeedle => {
+                let set = require(working.as_mut(), "MatchNeedle")?;
+                match_needle(set, spec, needle);
+            }
+            RankPhase::CollapseDescendants { keep } => {
+                let set = require(working.as_mut(), "CollapseDescendants")?;
+                collapse_descendants(set, needle, *keep);
+            }
             RankPhase::SortDesc => {
                 let set = require(working.as_mut(), "SortDesc")?;
-                set.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal));
+                // Ties break on the shorter path, then lexically — so a tie
+                // between an ancestor and its descendant is settled in favor
+                // of the ancestor, and the whole order is deterministic
+                // rather than dependent on the store's row order.
+                set.sort_by(|a, b| {
+                    b.score
+                        .partial_cmp(&a.score)
+                        .unwrap_or(Ordering::Equal)
+                        .then_with(|| a.path.as_os_str().len().cmp(&b.path.as_os_str().len()))
+                        .then_with(|| a.path.cmp(&b.path))
+                });
             }
             RankPhase::TopK { n } => {
                 let set = require(working.as_mut(), "TopK")?;
@@ -131,6 +174,45 @@ pub fn apply(
             score: acc.score,
         })
         .collect())
+}
+
+/// `RankPhase::MatchNeedle` — drop non-matches, scale survivors by their
+/// match kind's weight. A no-op under an empty needle, which is what keeps
+/// the published needle-free [`apply`] behavior-preserving.
+fn match_needle(set: &mut Vec<Acc>, spec: &FrecencyRankingSpec, needle: &str) {
+    if needle.is_empty() {
+        return;
+    }
+    set.retain_mut(|acc| match spec.matching.classify(needle, &acc.path) {
+        Some(kind) => {
+            acc.score *= spec.matching.weight(kind);
+            true
+        }
+        None => false,
+    });
+}
+
+/// `RankPhase::CollapseDescendants` — keep at most `keep` entries beneath any
+/// already-kept ancestor, walking in the current (rank) order. A no-op under
+/// an empty needle.
+fn collapse_descendants(set: &mut Vec<Acc>, needle: &str, keep: usize) {
+    if needle.is_empty() {
+        return;
+    }
+    let mut roots: Vec<(std::path::PathBuf, usize)> = Vec::new();
+    set.retain_mut(|acc| {
+        match roots.iter_mut().find(|(root, _)| acc.path.starts_with(root)) {
+            Some((_, seen)) if *seen >= keep => false,
+            Some((_, seen)) => {
+                *seen += 1;
+                true
+            }
+            None => {
+                roots.push((acc.path.clone(), 0));
+                true
+            }
+        }
+    });
 }
 
 fn require<'a>(set: Option<&'a mut Vec<Acc>>, phase: &str) -> Result<&'a mut Vec<Acc>, SpecError> {

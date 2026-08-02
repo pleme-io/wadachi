@@ -4,7 +4,10 @@
 //! whole supported surface, not just the case the author happened to test.
 
 use chrono::{Duration, NaiveDate, NaiveDateTime};
-use wadachi_spec::{apply, DecayKind, DirEntry, FrecencyRankingSpec, MockEnvironment};
+use wadachi_spec::{
+    apply, apply_matched, DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile,
+    MockEnvironment, RankPhase,
+};
 
 fn at_day(d: u32) -> NaiveDateTime {
     NaiveDate::from_ymd_opt(2026, 6, d)
@@ -142,5 +145,208 @@ fn malformed_pipeline_errors_not_panics() {
     let err = apply(&spec, vec![], &env).unwrap_err();
     match err {
         wadachi_spec::SpecError::Interp { phase, .. } => assert_eq!(phase, "Combine"),
+    }
+}
+
+// ─── matching matrix ────────────────────────────────────────────────────
+// Matching used to live outside the spec as `path.contains(needle)`. These
+// rows are the forcing function that keeps it inside.
+
+/// Adding a `RankPhase` variant breaks THIS FUNCTION'S COMPILATION until the
+/// author classifies it — a stronger gate than a count assertion, which only
+/// drifts at runtime. Tier: **truly-unrepresentable** (E0004 non-exhaustive
+/// match), not merely CI-caught.
+#[test]
+fn rank_phase_matrix_is_total() {
+    fn needs_needle(p: RankPhase) -> bool {
+        match p {
+            // Needle-driven: defined to be a no-op when the needle is empty,
+            // which is what keeps the published `apply()` behavior-preserving.
+            RankPhase::MatchNeedle | RankPhase::CollapseDescendants { .. } => true,
+            RankPhase::LoadEntries
+            | RankPhase::ComputeAge
+            | RankPhase::ApplyDecay
+            | RankPhase::Combine
+            | RankPhase::FloorIndexed
+            | RankPhase::SortDesc
+            | RankPhase::TopK { .. } => false,
+        }
+    }
+    assert!(needs_needle(RankPhase::MatchNeedle));
+    assert!(!needs_needle(RankPhase::SortDesc));
+    // Every needle-driven phase must be a no-op under an empty needle.
+    let now = at_day(10);
+    let env = MockEnvironment::at(now);
+    let mut spec = FrecencyRankingSpec::skimtab_parity();
+    spec.phases = FrecencyRankingSpec::canonical_phases();
+    let entries = vec![
+        DirEntry { path: "/a".into(), visits: vec![now], discovered_only: false },
+        DirEntry { path: "/a/b".into(), visits: vec![now], discovered_only: false },
+    ];
+    let ranked = apply(&spec, entries, &env).unwrap();
+    assert_eq!(ranked.len(), 2, "empty needle must not collapse or filter");
+}
+
+/// Every `MatchKind` must be reachable by some (needle, path) pair. A new
+/// variant with no row fails here.
+#[test]
+fn match_kind_matrix_is_total() {
+    let rows: &[(MatchKind, &str, &str)] = &[
+        (MatchKind::BasenameExact, "nix", "/code/pleme-io/nix"),
+        (MatchKind::BasenamePrefix, "wad", "/code/pleme-io/wadachi"),
+        (MatchKind::BasenameSubsequence, "wdc", "/code/pleme-io/wadachi"),
+        (MatchKind::ComponentPrefix, "wad", "/code/wadachi/spec/src"),
+        // Substring-only: "mmu" is inside "co-mmu-nity" but is neither a
+        // component prefix nor a subsequence of the basename "gifs".
+        (MatchKind::SubstringAnywhere, "mmu", "/code/akeyless-community/gifs"),
+    ];
+    assert_eq!(
+        rows.len(),
+        MatchKind::ALL.len(),
+        "a MatchKind was added/removed without updating the matrix"
+    );
+    for (expected, needle, path) in rows {
+        let got = MatchProfile::classify_raw(needle, std::path::Path::new(path));
+        assert_eq!(got, Some(*expected), "{needle:?} vs {path:?}");
+    }
+    // And the ladder really is worst → best.
+    let mut sorted = MatchKind::ALL.to_vec();
+    sorted.sort_unstable();
+    assert_eq!(sorted, MatchKind::ALL, "MatchKind Ord must be worst → best");
+}
+
+/// THE MEASURED DEFECT. Probed live at the frost prompt on 2026-08-01:
+/// `cd ni<TAB>` offered `…/akeyless-community/…` and
+/// `…/external-secrets/providers/v1/fortanix/` above real candidates,
+/// because the needle matched the middle of "commu-NI-ty" / "forta-NI-x".
+#[test]
+fn anchored_matching_rejects_mid_word_ancestor_coincidences() {
+    let noise = std::path::Path::new("/Users/x/code/github/akeyless-community/Akeyless-Cursor-Plugin/resources/gifs");
+    let real = std::path::Path::new("/Users/x/code/github/pleme-io/nix");
+    let anchored = MatchProfile::anchored();
+
+    assert_eq!(anchored.classify("ni", noise), None, "mid-word ancestor coincidence must not match");
+    assert_eq!(anchored.classify("ni", real), Some(MatchKind::BasenamePrefix));
+
+    // Honest boundary: the *directory named* `akeyless-community` still
+    // matches "ni" — as a BasenameSubsequence (c-o-m-m-u-**n**-**i**-t-y), a
+    // legitimate fuzzy hit on the thing being named. It is admitted at weight
+    // 1.0 against BasenamePrefix's 4.0, so it ranks far below `nix` instead of
+    // being excluded. Only the *ancestor* coincidence is rejected outright.
+    let community = std::path::Path::new("/Users/x/code/github/akeyless-community");
+    assert_eq!(anchored.classify("ni", community), Some(MatchKind::BasenameSubsequence));
+    assert!(anchored.weight(MatchKind::BasenamePrefix) > 3.0 * anchored.weight(MatchKind::BasenameSubsequence));
+
+    // …and the legacy profile still accepts it, so the difference between the
+    // two instances is pinned by a test rather than asserted in a changelog.
+    assert_eq!(
+        MatchProfile::substring_legacy().classify("ni", noise),
+        Some(MatchKind::SubstringAnywhere)
+    );
+}
+
+/// THE OTHER MEASURED DEFECT: 6 of 8 `cd wad` slots were sub-paths of the
+/// same repo (`wadachi/`, `wadachi/wadachi-spec/`, `…/specs/`, `…/src/`,
+/// `…/tests/`, `wadachi/wadachi/src/`).
+#[test]
+fn descendants_collapse_under_a_kept_ancestor() {
+    let now = at_day(10);
+    let env = MockEnvironment::at(now);
+    let spec = FrecencyRankingSpec::skimtab_parity();
+    let paths = [
+        "/code/pleme-io/wadachi",
+        "/code/pleme-io/wadachi/wadachi-spec",
+        "/code/pleme-io/wadachi/wadachi-spec/specs",
+        "/code/pleme-io/wadachi/wadachi-spec/src",
+        "/code/pleme-io/wadachi/wadachi/src",
+    ];
+    let entries = paths
+        .iter()
+        .map(|p| DirEntry { path: (*p).into(), visits: vec![now], discovered_only: false })
+        .collect();
+    let ranked = apply_matched(&spec, entries, "wad", &env).unwrap();
+    assert_eq!(
+        ranked.iter().map(|r| r.path.to_str().unwrap()).collect::<Vec<_>>(),
+        vec!["/code/pleme-io/wadachi"],
+        "one repo must not flood the result set with its own subtree"
+    );
+}
+
+/// A real visit must beat an indexed-only coincidence even when both match at
+/// the same kind — the `wadachi` vs `wadey` case from the live probe.
+#[test]
+fn a_lived_in_dir_outranks_a_never_visited_namesake() {
+    let now = at_day(10);
+    let env = MockEnvironment::at(now);
+    let spec = FrecencyRankingSpec::skimtab_parity();
+    let entries = vec![
+        DirEntry {
+            path: "/code/akeylesslabs/main/vendor/github.com/wadey".into(),
+            visits: vec![],
+            discovered_only: true,
+        },
+        DirEntry {
+            path: "/code/pleme-io/wadachi".into(),
+            visits: vec![now - Duration::days(1)],
+            discovered_only: false,
+        },
+    ];
+    let ranked = apply_matched(&spec, entries, "wad", &env).unwrap();
+    assert_eq!(ranked[0].path.to_str().unwrap(), "/code/pleme-io/wadachi");
+}
+
+/// A `/`-bearing needle reads as ordered path fragments.
+#[test]
+fn slash_needle_matches_ancestor_then_basename() {
+    let anchored = MatchProfile::anchored();
+    let p = std::path::Path::new("/Users/x/code/github/pleme-io/wadachi");
+    assert_eq!(anchored.classify("pleme-io/wad", p), Some(MatchKind::BasenamePrefix));
+    // Ancestor fragment that isn't there → no match, even though "wad" is.
+    assert_eq!(anchored.classify("akeylesslabs/wad", p), None);
+    // Order matters: the ancestor must precede the basename.
+    assert_eq!(anchored.classify("wadachi/pleme-io", p), None);
+}
+
+/// Case-insensitive, and the empty needle is the identity.
+#[test]
+fn matching_is_case_insensitive_and_empty_is_identity() {
+    let anchored = MatchProfile::anchored();
+    let p = std::path::Path::new("/Users/x/Code/Pleme-IO/WaDaChi");
+    assert_eq!(anchored.classify("wadachi", p), Some(MatchKind::BasenameExact));
+    assert_eq!(anchored.classify("WAD", p), Some(MatchKind::BasenamePrefix));
+    assert_eq!(anchored.classify("", p), Some(MatchKind::BasenameExact));
+}
+
+/// `apply` (the published, needle-free signature) must be bit-identical to
+/// what it returned before matching was modeled.
+#[test]
+fn published_apply_is_behavior_preserving() {
+    let now = at_day(10);
+    let env = MockEnvironment::at(now);
+    let spec = FrecencyRankingSpec::skimtab_parity();
+    let entries = vec![DirEntry {
+        path: "/x".into(),
+        visits: vec![now, now - Duration::days(4)],
+        discovered_only: false,
+    }];
+    let ranked = apply(&spec, entries, &env).unwrap();
+    let expected = 1.0 / (1.0 + 0.0) + 1.0 / (1.0 + 4.0);
+    assert!((ranked[0].score - expected).abs() < 1e-9, "got {}", ranked[0].score);
+}
+
+/// Every shipped instance must survive a needle that matches nothing without
+/// erroring, and must never return a non-match.
+#[test]
+fn no_instance_returns_a_non_match() {
+    let now = at_day(10);
+    let env = MockEnvironment::at(now);
+    for spec in FrecencyRankingSpec::all() {
+        let entries = vec![DirEntry {
+            path: "/code/pleme-io/nix".into(),
+            visits: vec![now],
+            discovered_only: false,
+        }];
+        let ranked = apply_matched(&spec, entries, "zzzznope", &env).unwrap();
+        assert!(ranked.is_empty(), "{} returned a non-match", spec.name);
     }
 }
