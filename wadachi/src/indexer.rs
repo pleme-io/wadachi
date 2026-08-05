@@ -36,8 +36,8 @@
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
 use std::sync::Mutex;
+use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime};
 
 use anyhow::Context;
@@ -136,11 +136,13 @@ pub fn walk_roots(
     let workers = concurrency.clamp(1, roots.len().max(1));
     std::thread::scope(|scope| {
         for _ in 0..workers {
-            scope.spawn(|| loop {
-                let next = queue.lock().unwrap().pop_front();
-                let Some(root) = next else { break };
-                let dirs = walk_root(&root.path, root.max_depth, ignore);
-                done.lock().unwrap().push((root, dirs));
+            scope.spawn(|| {
+                loop {
+                    let next = queue.lock().unwrap().pop_front();
+                    let Some(root) = next else { break };
+                    let dirs = walk_root(&root.path, root.max_depth, ignore);
+                    done.lock().unwrap().push((root, dirs));
+                }
             });
         }
     });
@@ -192,7 +194,11 @@ impl RootMtimeGate {
 
 /// What one indexing pass did — rendered via `Display` (the typed emission
 /// surface; the CLI prints this, the library never does).
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+// `Copy` was dropped when `watch_degraded` was added: naming WHICH root lost
+// its live watch is what makes the degradation actionable, and a count alone
+// would have preserved `Copy` at the cost of the only useful detail. Verified
+// against the whole workspace — no consumer relied on implicit copies.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct IndexSummary {
     /// Roots actually walked this pass (gate-skipped roots don't count).
     pub roots_walked: usize,
@@ -201,6 +207,15 @@ pub struct IndexSummary {
     pub indexed: usize,
     /// Dead `discovered` rows removed because their dir no longer exists.
     pub pruned: usize,
+    /// Roots whose RECURSIVE WATCH could not be installed because some path
+    /// beneath them is unreadable. Empty in the normal case.
+    ///
+    /// These roots are still indexed — the periodic re-walk covers them — but
+    /// their updates arrive on the re-walk interval instead of immediately.
+    /// Reported rather than logged because this module never prints (see the
+    /// module docs); the CLI renders it.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub watch_degraded: Vec<PathBuf>,
 }
 
 impl fmt::Display for IndexSummary {
@@ -209,7 +224,64 @@ impl fmt::Display for IndexSummary {
             f,
             "indexed {} dirs across {} roots ({} pruned)",
             self.indexed, self.roots_walked, self.pruned
-        )
+        )?;
+        if !self.watch_degraded.is_empty() {
+            write!(
+                f,
+                " [live watch unavailable on {} root(s); \
+                 updates arrive on the re-walk interval]",
+                self.watch_degraded.len()
+            )?;
+        }
+        Ok(())
+    }
+}
+
+/// Should a failure to install a recursive watch DEGRADE the daemon rather
+/// than kill it?
+///
+/// ── ★ ONE UNREADABLE DESCENDANT IS NOT A DEAF WATCHER ──────────────────
+/// `run_daemon` used to propagate every `watch()` error, justified as "a deaf
+/// watcher is worse than a dead daemon — systemd restarts us". The first half
+/// is right; the second assumed the restart could FIX it.
+///
+/// MEASURED on rio 2026-08-05: `wadachi-daemon.service` (a systemd USER unit)
+/// had restarted **232 times** and was still going, ~1374 journal lines per
+/// ten minutes, every one of them:
+///
+/// ```text
+/// Error: /home/drzzln
+/// Caused by:
+///     Permission denied (os error 13)
+///       about ["/home/drzzln/.kube/cache/discovery/127.0.0.1_6443/cilium.io"]
+/// ```
+///
+/// The root `/home/drzzln` is perfectly watchable. ONE descendant — a stale
+/// kube discovery-cache directory left by the cilium→flannel migration — is
+/// unreadable, and inotify fails the whole recursive install because of it.
+/// So "a configured root can't be watched" was simply false, and the
+/// permission bit is permanent: every restart re-entered the identical
+/// failure. Fail-fast produced an infinite crashloop, never a recovery.
+///
+/// Degrading is safe HERE specifically because this daemon already re-walks
+/// on `RootMtimeGate` (floor 60s, `run_daemon`). Losing watch coverage costs
+/// LATENCY, not correctness. A dead daemon costs both — which is why the
+/// original trade-off inverts once you notice the re-walk exists.
+///
+/// The split is deliberately narrow, exactly as `sentinela`'s `exec_err`
+/// splits ENOENT from transient io: only a permission denial degrades. A
+/// malformed path, a watch-descriptor exhaustion or a backend failure is a
+/// real misconfiguration and still fails fast, because for those a restart
+/// (or an operator) genuinely can change the outcome.
+#[must_use]
+pub fn watch_error_is_degradable(err: &notify::Error) -> bool {
+    match &err.kind {
+        notify::ErrorKind::Io(io) => io.kind() == std::io::ErrorKind::PermissionDenied,
+        // `MaxFilesWatch` is inotify's watch-descriptor ceiling. Deliberately
+        // NOT degradable: it is a real, operator-fixable resource limit
+        // (`fs.inotify.max_user_watches`), and silently running blind on it
+        // would hide a condition that a sysctl actually resolves.
+        _ => false,
     }
 }
 
@@ -398,8 +470,7 @@ pub fn run_daemon(
     let roots = canonical_roots(&cfg.roots);
     let mut gate = RootMtimeGate::new(Duration::from_secs(cfg.rewalk_interval_secs.max(60)));
 
-    let initial = index_walks(store, &walk_roots(&roots, &ignore, cfg.concurrency))?;
-    on_pass(&initial);
+    let mut initial = index_walks(store, &walk_roots(&roots, &ignore, cfg.concurrency))?;
     let walked_at = SystemTime::now();
     for root in &roots {
         gate.mark_walked(&root.path, walked_at);
@@ -410,13 +481,27 @@ pub fn run_daemon(
         let _ = tx.send(event); // receiver gone == daemon tearing down
     })
     .context("creating filesystem watcher")?;
+    // A permission denial somewhere beneath a root degrades that root to
+    // re-walk-only; anything else still fails fast. See
+    // `watch_error_is_degradable` for the rio measurement that motivated the
+    // split — the previous unconditional `?` here crashlooped 232 times on a
+    // single unreadable stale cache directory.
     for root in &roots {
         if root.path.is_dir() {
-            watcher
-                .watch(&root.path, RecursiveMode::Recursive)
-                .with_context(|| root.path.display().to_string())?;
+            match watcher.watch(&root.path, RecursiveMode::Recursive) {
+                Ok(()) => {}
+                Err(e) if watch_error_is_degradable(&e) => {
+                    initial.watch_degraded.push(root.path.clone());
+                }
+                Err(e) => {
+                    return Err(anyhow::Error::new(e).context(root.path.display().to_string()));
+                }
+            }
         }
     }
+    // Reported after the watch install so the first pass can carry the
+    // coverage verdict; the walk itself already happened above.
+    on_pass(&initial);
 
     let debounce = Duration::from_millis(cfg.debounce_ms.clamp(50, 10_000));
     let mut pending: BTreeSet<PathBuf> = BTreeSet::new();
@@ -451,10 +536,7 @@ mod tests {
     use super::*;
 
     fn ignore() -> IgnoreSet {
-        IgnoreSet::new(
-            ["node_modules".to_owned(), "target".to_owned()],
-            false,
-        )
+        IgnoreSet::new(["node_modules".to_owned(), "target".to_owned()], false)
     }
 
     #[test]
@@ -482,7 +564,10 @@ mod tests {
 
     #[test]
     fn deepest_root_wins_for_overlapping_roots() {
-        let roots = vec![IndexerRoot::new("/home/u", 2), IndexerRoot::new("/home/u/code", 6)];
+        let roots = vec![
+            IndexerRoot::new("/home/u", 2),
+            IndexerRoot::new("/home/u/code", 6),
+        ];
         let hit = deepest_root_for(&roots, Path::new("/home/u/code/gh/org/repo")).unwrap();
         assert_eq!(hit.path, PathBuf::from("/home/u/code"));
     }
@@ -498,5 +583,77 @@ mod tests {
         // a readable, unchanged root is exercised in the integration tests.
         assert!(gate.stale(root, now + Duration::from_secs(1)));
         assert!(gate.stale(root, now + Duration::from_secs(901))); // bound hit
+    }
+
+    // ── watch_error_is_degradable: the rio 232-restart crashloop ─────────
+    //
+    // Regression tests for wadachi-daemon.service restarting 232 times on a
+    // single unreadable stale kube-cache directory beneath /home/drzzln.
+
+    #[test]
+    fn permission_denied_degrades_instead_of_killing_the_daemon() {
+        let e = notify::Error::io(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
+        assert!(
+            watch_error_is_degradable(&e),
+            "one unreadable descendant must NOT kill a daemon that already \
+             re-walks on an interval — the permission bit is permanent, so \
+             every restart re-enters the identical failure"
+        );
+    }
+
+    #[test]
+    fn other_io_errors_still_fail_fast() {
+        // A restart (or an operator) can plausibly change these, so the
+        // original fail-fast is still correct for them.
+        for kind in [
+            std::io::ErrorKind::NotFound,
+            std::io::ErrorKind::InvalidInput,
+        ] {
+            let e = notify::Error::io(std::io::Error::from(kind));
+            assert!(
+                !watch_error_is_degradable(&e),
+                "{kind:?} must keep failing fast — degrading it would run \
+                 blind on a condition someone can actually fix"
+            );
+        }
+    }
+
+    #[test]
+    fn watch_descriptor_exhaustion_is_not_degradable() {
+        // inotify's fs.inotify.max_user_watches ceiling is operator-fixable;
+        // silently running blind on it would hide a sysctl-shaped problem.
+        let e = notify::Error::new(notify::ErrorKind::MaxFilesWatch);
+        assert!(!watch_error_is_degradable(&e));
+    }
+
+    #[test]
+    fn summary_display_names_the_degradation_and_stays_quiet_otherwise() {
+        // The module never prints, so this Display IS the operator channel.
+        let clean = IndexSummary {
+            roots_walked: 2,
+            indexed: 9,
+            pruned: 1,
+            watch_degraded: Vec::new(),
+        };
+        assert!(
+            !clean.to_string().contains("watch"),
+            "a healthy pass must not mention watches: {clean}"
+        );
+
+        let degraded = IndexSummary {
+            roots_walked: 2,
+            indexed: 9,
+            pruned: 1,
+            watch_degraded: vec![PathBuf::from("/home/drzzln")],
+        };
+        let rendered = degraded.to_string();
+        assert!(
+            rendered.contains("live watch unavailable"),
+            "degradation must be visible, not silent: {rendered}"
+        );
+        assert!(
+            rendered.contains("re-walk"),
+            "and must say why it is still correct: {rendered}"
+        );
     }
 }

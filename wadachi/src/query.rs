@@ -11,7 +11,7 @@
 
 use std::path::PathBuf;
 
-use wadachi_spec::{apply_matched, FrecencyRankingSpec, RankedDir, RealEnvironment};
+use wadachi_spec::{FrecencyRankingSpec, RankedDir, RealEnvironment, apply_matched};
 
 use crate::store::DirStore;
 
@@ -43,5 +43,8 @@ pub fn top_match(
     spec: &FrecencyRankingSpec,
     needle: &str,
 ) -> anyhow::Result<Option<PathBuf>> {
-    Ok(top_n(store, spec, needle, 1)?.into_iter().next().map(|r| r.path))
+    Ok(top_n(store, spec, needle, 1)?
+        .into_iter()
+        .next()
+        .map(|r| r.path))
 }

@@ -9,8 +9,8 @@ use std::path::Path;
 
 use pleme_io_wadachi::config::{IndexerConfig, IndexerRoot, WadachiConfig};
 use pleme_io_wadachi::indexer::{self, EventOutcome, IgnoreSet};
-use pleme_io_wadachi::store::{DirFrecencyDb, DirStore, MemDirStore};
 use pleme_io_wadachi::query;
+use pleme_io_wadachi::store::{DirFrecencyDb, DirStore, MemDirStore};
 use wadachi_spec::FrecencyRankingSpec;
 
 fn ignore() -> IgnoreSet {
@@ -83,7 +83,11 @@ fn assert_upserts_land_in_discovered(store: &impl DirStore) {
     let entries = store.entries().unwrap();
     assert_eq!(entries.len(), 3);
     for e in &entries {
-        assert!(e.discovered_only, "{} must be discovered, not visited", e.path.display());
+        assert!(
+            e.discovered_only,
+            "{} must be discovered, not visited",
+            e.path.display()
+        );
         assert!(e.visits.is_empty(), "indexer must never write a visit row");
     }
 }
@@ -197,7 +201,15 @@ fn config_defaults_and_serde_round_trip() {
     assert_eq!(cfg.indexer.debounce_ms, 500);
     assert_eq!(cfg.indexer.rewalk_interval_secs, 900);
     assert!(cfg.indexer.concurrency >= 1);
-    for name in [".git", "node_modules", "target", ".direnv", ".cache", "Library", ".Trash"] {
+    for name in [
+        ".git",
+        "node_modules",
+        "target",
+        ".direnv",
+        ".cache",
+        "Library",
+        ".Trash",
+    ] {
         assert!(
             cfg.indexer.ignore_names.iter().any(|n| n == name),
             "prescribed ignore set must contain {name}"
@@ -205,7 +217,9 @@ fn config_defaults_and_serde_round_trip() {
     }
     if let Some(home) = dirs::home_dir() {
         assert!(
-            cfg.indexer.roots.contains(&IndexerRoot::new(home.join("code"), 6)),
+            cfg.indexer
+                .roots
+                .contains(&IndexerRoot::new(home.join("code"), 6)),
             "~/code must be a default root (deep)"
         );
         assert!(

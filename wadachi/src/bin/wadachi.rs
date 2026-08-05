@@ -12,10 +12,14 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 
 use pleme_io_wadachi::config::WadachiConfig;
-use pleme_io_wadachi::{indexer, DirFrecencyDb};
+use pleme_io_wadachi::{DirFrecencyDb, indexer};
 
 #[derive(Parser)]
-#[command(name = "wadachi", version, about = "directory frecency — the well-worn rut (轍)")]
+#[command(
+    name = "wadachi",
+    version,
+    about = "directory frecency — the well-worn rut (轍)"
+)]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -102,14 +106,27 @@ fn print_config(c: &WadachiConfig) {
     println!("db_path                       {}", c.db_path.display());
     println!("ranking_instance              {}", c.ranking_instance);
     println!("indexer.enabled               {}", c.indexer.enabled);
-    println!("indexer.roots                 {} dirs", c.indexer.roots.len());
+    println!(
+        "indexer.roots                 {} dirs",
+        c.indexer.roots.len()
+    );
     for r in &c.indexer.roots {
-        println!("                                {} (depth {})", r.path.display(), r.max_depth);
+        println!(
+            "                                {} (depth {})",
+            r.path.display(),
+            r.max_depth
+        );
     }
-    println!("indexer.ignore_names          {}", c.indexer.ignore_names.join(" "));
+    println!(
+        "indexer.ignore_names          {}",
+        c.indexer.ignore_names.join(" ")
+    );
     println!("indexer.index_hidden          {}", c.indexer.index_hidden);
     println!("indexer.debounce_ms           {}", c.indexer.debounce_ms);
-    println!("indexer.rewalk_interval_secs  {}", c.indexer.rewalk_interval_secs);
+    println!(
+        "indexer.rewalk_interval_secs  {}",
+        c.indexer.rewalk_interval_secs
+    );
     println!("indexer.concurrency           {}", c.indexer.concurrency);
     println!("max_entries                   {}", c.max_entries);
     println!("cleanup_max_age_days          {}", c.cleanup_max_age_days);

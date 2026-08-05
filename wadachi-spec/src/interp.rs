@@ -99,11 +99,7 @@ pub fn apply_matched(
             RankPhase::ComputeAge => {
                 let set = require(working.as_mut(), "ComputeAge")?;
                 for acc in set.iter_mut() {
-                    acc.ages = acc
-                        .visits
-                        .iter()
-                        .map(|t| age_days(now, *t))
-                        .collect();
+                    acc.ages = acc.visits.iter().map(|t| age_days(now, *t)).collect();
                 }
             }
             RankPhase::ApplyDecay => {
@@ -201,7 +197,10 @@ fn collapse_descendants(set: &mut Vec<Acc>, needle: &str, keep: usize) {
     }
     let mut roots: Vec<(std::path::PathBuf, usize)> = Vec::new();
     set.retain_mut(|acc| {
-        match roots.iter_mut().find(|(root, _)| acc.path.starts_with(root)) {
+        match roots
+            .iter_mut()
+            .find(|(root, _)| acc.path.starts_with(root))
+        {
             Some((_, seen)) if *seen >= keep => false,
             Some((_, seen)) => {
                 *seen += 1;

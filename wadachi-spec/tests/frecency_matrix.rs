@@ -5,8 +5,8 @@
 
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use wadachi_spec::{
-    apply, apply_matched, DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile,
-    MockEnvironment, RankPhase,
+    DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile, MockEnvironment, RankPhase,
+    apply, apply_matched,
 };
 
 fn at_day(d: u32) -> NaiveDateTime {
@@ -51,15 +51,26 @@ fn every_instance_ranks_recent_above_old() {
     let mut failures = Vec::new();
     for spec in FrecencyRankingSpec::all() {
         let entries = vec![
-            DirEntry { path: "/old".into(), visits: vec![old], discovered_only: false },
-            DirEntry { path: "/recent".into(), visits: vec![recent], discovered_only: false },
+            DirEntry {
+                path: "/old".into(),
+                visits: vec![old],
+                discovered_only: false,
+            },
+            DirEntry {
+                path: "/recent".into(),
+                visits: vec![recent],
+                discovered_only: false,
+            },
         ];
         let ranked = apply(&spec, entries, &env).unwrap();
         if ranked.first().map(|r| r.path.to_str().unwrap()) != Some("/recent") {
             failures.push(spec.name.clone());
         }
     }
-    assert!(failures.is_empty(), "instances ranked old over recent: {failures:?}");
+    assert!(
+        failures.is_empty(),
+        "instances ranked old over recent: {failures:?}"
+    );
 }
 
 #[test]
@@ -77,7 +88,11 @@ fn skimtab_parity_is_behavior_preserving() {
     }];
     let ranked = apply(&spec, entries, &env).unwrap();
     let expected = 1.0 / (1.0 + 0.0) + 1.0 / (1.0 + 4.0);
-    assert!((ranked[0].score - expected).abs() < 1e-9, "got {}", ranked[0].score);
+    assert!(
+        (ranked[0].score - expected).abs() < 1e-9,
+        "got {}",
+        ranked[0].score
+    );
 }
 
 #[test]
@@ -86,7 +101,11 @@ fn discovered_only_is_floored_and_below_recent_visits() {
     let env = MockEnvironment::at(now);
     let spec = FrecencyRankingSpec::skimtab_parity();
     let entries = vec![
-        DirEntry { path: "/indexed".into(), visits: vec![], discovered_only: true },
+        DirEntry {
+            path: "/indexed".into(),
+            visits: vec![],
+            discovered_only: true,
+        },
         DirEntry {
             // Visited within the epsilon-crossover window (~2.7y for eps=0.001);
             // 100d → score 1/101 ≈ 0.0099 > 0.001.
@@ -96,8 +115,14 @@ fn discovered_only_is_floored_and_below_recent_visits() {
         },
     ];
     let ranked = apply(&spec, entries, &env).unwrap();
-    let indexed = ranked.iter().find(|r| r.path.to_str() == Some("/indexed")).unwrap();
-    let recent = ranked.iter().find(|r| r.path.to_str() == Some("/recent")).unwrap();
+    let indexed = ranked
+        .iter()
+        .find(|r| r.path.to_str() == Some("/indexed"))
+        .unwrap();
+    let recent = ranked
+        .iter()
+        .find(|r| r.path.to_str() == Some("/recent"))
+        .unwrap();
     // Discovered-only is floored to exactly epsilon — rankable, but the floor.
     // Exact float equality is the point: `FloorIndexed` *assigns* the epsilon
     // (no arithmetic), so bit-identity is the contract under test.
@@ -108,7 +133,12 @@ fn discovered_only_is_floored_and_below_recent_visits() {
     // A reasonably-recent real visit outranks a fresh discovery. (Visits older
     // than the crossover decay below the floor and are effectively forgotten,
     // which is the intended frecency behavior.)
-    assert!(recent.score > indexed.score, "recent {} vs floor {}", recent.score, indexed.score);
+    assert!(
+        recent.score > indexed.score,
+        "recent {} vs floor {}",
+        recent.score,
+        indexed.score
+    );
 }
 
 #[test]
@@ -180,8 +210,16 @@ fn rank_phase_matrix_is_total() {
     let mut spec = FrecencyRankingSpec::skimtab_parity();
     spec.phases = FrecencyRankingSpec::canonical_phases();
     let entries = vec![
-        DirEntry { path: "/a".into(), visits: vec![now], discovered_only: false },
-        DirEntry { path: "/a/b".into(), visits: vec![now], discovered_only: false },
+        DirEntry {
+            path: "/a".into(),
+            visits: vec![now],
+            discovered_only: false,
+        },
+        DirEntry {
+            path: "/a/b".into(),
+            visits: vec![now],
+            discovered_only: false,
+        },
     ];
     let ranked = apply(&spec, entries, &env).unwrap();
     assert_eq!(ranked.len(), 2, "empty needle must not collapse or filter");
@@ -194,11 +232,19 @@ fn match_kind_matrix_is_total() {
     let rows: &[(MatchKind, &str, &str)] = &[
         (MatchKind::BasenameExact, "nix", "/code/pleme-io/nix"),
         (MatchKind::BasenamePrefix, "wad", "/code/pleme-io/wadachi"),
-        (MatchKind::BasenameSubsequence, "wdc", "/code/pleme-io/wadachi"),
+        (
+            MatchKind::BasenameSubsequence,
+            "wdc",
+            "/code/pleme-io/wadachi",
+        ),
         (MatchKind::ComponentPrefix, "wad", "/code/wadachi/spec/src"),
         // Substring-only: "mmu" is inside "co-mmu-nity" but is neither a
         // component prefix nor a subsequence of the basename "gifs".
-        (MatchKind::SubstringAnywhere, "mmu", "/code/akeyless-community/gifs"),
+        (
+            MatchKind::SubstringAnywhere,
+            "mmu",
+            "/code/akeyless-community/gifs",
+        ),
     ];
     assert_eq!(
         rows.len(),
@@ -221,12 +267,21 @@ fn match_kind_matrix_is_total() {
 /// because the needle matched the middle of "commu-NI-ty" / "forta-NI-x".
 #[test]
 fn anchored_matching_rejects_mid_word_ancestor_coincidences() {
-    let noise = std::path::Path::new("/Users/x/code/github/akeyless-community/Akeyless-Cursor-Plugin/resources/gifs");
+    let noise = std::path::Path::new(
+        "/Users/x/code/github/akeyless-community/Akeyless-Cursor-Plugin/resources/gifs",
+    );
     let real = std::path::Path::new("/Users/x/code/github/pleme-io/nix");
     let anchored = MatchProfile::anchored();
 
-    assert_eq!(anchored.classify("ni", noise), None, "mid-word ancestor coincidence must not match");
-    assert_eq!(anchored.classify("ni", real), Some(MatchKind::BasenamePrefix));
+    assert_eq!(
+        anchored.classify("ni", noise),
+        None,
+        "mid-word ancestor coincidence must not match"
+    );
+    assert_eq!(
+        anchored.classify("ni", real),
+        Some(MatchKind::BasenamePrefix)
+    );
 
     // Honest boundary: the *directory named* `akeyless-community` still
     // matches "ni" — as a BasenameSubsequence (c-o-m-m-u-**n**-**i**-t-y), a
@@ -234,8 +289,14 @@ fn anchored_matching_rejects_mid_word_ancestor_coincidences() {
     // 1.0 against BasenamePrefix's 4.0, so it ranks far below `nix` instead of
     // being excluded. Only the *ancestor* coincidence is rejected outright.
     let community = std::path::Path::new("/Users/x/code/github/akeyless-community");
-    assert_eq!(anchored.classify("ni", community), Some(MatchKind::BasenameSubsequence));
-    assert!(anchored.weight(MatchKind::BasenamePrefix) > 3.0 * anchored.weight(MatchKind::BasenameSubsequence));
+    assert_eq!(
+        anchored.classify("ni", community),
+        Some(MatchKind::BasenameSubsequence)
+    );
+    assert!(
+        anchored.weight(MatchKind::BasenamePrefix)
+            > 3.0 * anchored.weight(MatchKind::BasenameSubsequence)
+    );
 
     // …and the legacy profile still accepts it, so the difference between the
     // two instances is pinned by a test rather than asserted in a changelog.
@@ -262,11 +323,18 @@ fn descendants_collapse_under_a_kept_ancestor() {
     ];
     let entries = paths
         .iter()
-        .map(|p| DirEntry { path: (*p).into(), visits: vec![now], discovered_only: false })
+        .map(|p| DirEntry {
+            path: (*p).into(),
+            visits: vec![now],
+            discovered_only: false,
+        })
         .collect();
     let ranked = apply_matched(&spec, entries, "wad", &env).unwrap();
     assert_eq!(
-        ranked.iter().map(|r| r.path.to_str().unwrap()).collect::<Vec<_>>(),
+        ranked
+            .iter()
+            .map(|r| r.path.to_str().unwrap())
+            .collect::<Vec<_>>(),
         vec!["/code/pleme-io/wadachi"],
         "one repo must not flood the result set with its own subtree"
     );
@@ -300,7 +368,10 @@ fn a_lived_in_dir_outranks_a_never_visited_namesake() {
 fn slash_needle_matches_ancestor_then_basename() {
     let anchored = MatchProfile::anchored();
     let p = std::path::Path::new("/Users/x/code/github/pleme-io/wadachi");
-    assert_eq!(anchored.classify("pleme-io/wad", p), Some(MatchKind::BasenamePrefix));
+    assert_eq!(
+        anchored.classify("pleme-io/wad", p),
+        Some(MatchKind::BasenamePrefix)
+    );
     // Ancestor fragment that isn't there → no match, even though "wad" is.
     assert_eq!(anchored.classify("akeylesslabs/wad", p), None);
     // Order matters: the ancestor must precede the basename.
@@ -312,7 +383,10 @@ fn slash_needle_matches_ancestor_then_basename() {
 fn matching_is_case_insensitive_and_empty_is_identity() {
     let anchored = MatchProfile::anchored();
     let p = std::path::Path::new("/Users/x/Code/Pleme-IO/WaDaChi");
-    assert_eq!(anchored.classify("wadachi", p), Some(MatchKind::BasenameExact));
+    assert_eq!(
+        anchored.classify("wadachi", p),
+        Some(MatchKind::BasenameExact)
+    );
     assert_eq!(anchored.classify("WAD", p), Some(MatchKind::BasenamePrefix));
     assert_eq!(anchored.classify("", p), Some(MatchKind::BasenameExact));
 }
@@ -331,7 +405,11 @@ fn published_apply_is_behavior_preserving() {
     }];
     let ranked = apply(&spec, entries, &env).unwrap();
     let expected = 1.0 / (1.0 + 0.0) + 1.0 / (1.0 + 4.0);
-    assert!((ranked[0].score - expected).abs() < 1e-9, "got {}", ranked[0].score);
+    assert!(
+        (ranked[0].score - expected).abs() < 1e-9,
+        "got {}",
+        ranked[0].score
+    );
 }
 
 /// Every shipped instance must survive a needle that matches nothing without

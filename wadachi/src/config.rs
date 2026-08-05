@@ -58,7 +58,10 @@ impl IndexerRoot {
     /// A root at `path` collecting up to `max_depth` levels of descendants.
     #[must_use]
     pub fn new(path: impl Into<PathBuf>, max_depth: usize) -> Self {
-        Self { path: path.into(), max_depth }
+        Self {
+            path: path.into(),
+            max_depth,
+        }
     }
 }
 

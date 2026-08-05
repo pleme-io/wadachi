@@ -27,8 +27,7 @@ impl DirFrecencyDb {
     /// Fails if the parent dir can't be created or `SQLite` can't open/migrate.
     pub fn open(path: &Path) -> anyhow::Result<Self> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .with_context(|| "creating wadachi data directory")?;
+            std::fs::create_dir_all(parent).with_context(|| "creating wadachi data directory")?;
         }
         let conn = Connection::open(path).with_context(|| "opening wadachi db")?;
         conn.pragma_update(None, "journal_mode", "WAL")?;
@@ -86,9 +85,7 @@ impl DirStore for DirFrecencyDb {
             let mut stmt = self
                 .conn
                 .prepare("SELECT path, timestamp FROM visits ORDER BY path")?;
-            let rows = stmt.query_map([], |r| {
-                Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
-            })?;
+            let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
             for row in rows {
                 let (path, ts) = row?;
                 if let Some(dt) = DateTime::from_timestamp(ts, 0) {

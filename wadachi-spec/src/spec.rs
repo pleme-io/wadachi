@@ -57,7 +57,11 @@ impl DecayKind {
         match self {
             DecayKind::HyperbolicDays => 1.0 / (1.0 + age),
             DecayKind::ExpHalfLife => {
-                let hl = if half_life_days <= 0.0 { 1.0 } else { half_life_days };
+                let hl = if half_life_days <= 0.0 {
+                    1.0
+                } else {
+                    half_life_days
+                };
                 2.0_f64.powf(-age / hl)
             }
             DecayKind::ZoxideLogBuckets => {

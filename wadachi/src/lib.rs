@@ -48,8 +48,7 @@ use wadachi_spec::{FrecencyRankingSpec, RankedDir};
 /// Cheap — never walks the filesystem (unlike the `discovered()` tier).
 #[must_use]
 pub fn runtime_db_path() -> PathBuf {
-    std::env::var("WADACHI_DB")
-        .map_or_else(|_| config::default_db_path(), PathBuf::from)
+    std::env::var("WADACHI_DB").map_or_else(|_| config::default_db_path(), PathBuf::from)
 }
 
 /// The ranking spec the hot path uses: `WADACHI_RANKING` or the fleet default.
