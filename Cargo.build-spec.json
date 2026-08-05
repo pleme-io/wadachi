@@ -1562,18 +1562,7 @@
       "links": null,
       "binaries": [],
       "lib_target": null,
-      "runtime_dependencies": [
-        {
-          "name": "core_foundation_sys",
-          "package_key": "core-foundation-sys-0.8.7",
-          "kind": "normal",
-          "features": [],
-          "uses_default_features": true,
-          "optional": false,
-          "target": "cfg(target_vendor = \"apple\")",
-          "tree": "target"
-        }
-      ],
+      "runtime_dependencies": [],
       "build_dependencies": [],
       "crate_renames": {
         "core-foundation-sys": [
@@ -2082,23 +2071,13 @@
       "lib_target": null,
       "runtime_dependencies": [
         {
-          "name": "bitflags",
-          "package_key": "bitflags-2.13.0",
+          "name": "inotify",
+          "package_key": "inotify-0.11.2",
           "kind": "normal",
           "features": [],
-          "uses_default_features": true,
+          "uses_default_features": false,
           "optional": false,
-          "target": "cfg(target_os = \"macos\")",
-          "tree": "target"
-        },
-        {
-          "name": "fsevent_sys",
-          "package_key": "fsevent-sys-4.1.0",
-          "kind": "normal",
-          "features": [],
-          "uses_default_features": true,
-          "optional": true,
-          "target": "cfg(target_os = \"macos\")",
+          "target": "cfg(any(target_os = \"linux\", target_os = \"android\"))",
           "tree": "target"
         },
         {
@@ -2119,6 +2098,30 @@
           "uses_default_features": true,
           "optional": false,
           "target": null,
+          "tree": "target"
+        },
+        {
+          "name": "mio",
+          "package_key": "mio-1.2.1",
+          "kind": "normal",
+          "features": [
+            "os-ext"
+          ],
+          "uses_default_features": true,
+          "optional": false,
+          "target": "cfg(any(target_os = \"freebsd\", target_os = \"openbsd\", target_os = \"netbsd\", target_os = \"dragonflybsd\", target_os = \"ios\"))",
+          "tree": "target"
+        },
+        {
+          "name": "mio",
+          "package_key": "mio-1.2.1",
+          "kind": "normal",
+          "features": [
+            "os-ext"
+          ],
+          "uses_default_features": true,
+          "optional": false,
+          "target": "cfg(any(target_os = \"linux\", target_os = \"android\"))",
           "tree": "target"
         },
         {
@@ -2350,9 +2353,9 @@
         "preBuild": "export CARGO_CRATE_NAME=pkg_config;"
       }
     },
-    "pleme-io-wadachi-0.1.6": {
+    "pleme-io-wadachi-0.1.7": {
       "name": "pleme-io-wadachi",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "edition": "2024",
       "source": {
         "kind": "path",
@@ -2466,7 +2469,7 @@
         },
         {
           "name": "wadachi_spec",
-          "package_key": "wadachi-spec-0.1.6",
+          "package_key": "wadachi-spec-0.1.7",
           "kind": "normal",
           "features": [],
           "uses_default_features": true,
@@ -2479,19 +2482,19 @@
       "crate_renames": {
         "wadachi-spec": [
           {
-            "version": "0.1.6",
+            "version": "0.1.7",
             "rename": "wadachi_spec"
           }
         ]
       },
       "build_rust_crate_args": {
         "crateName": "pleme-io-wadachi",
-        "version": "0.1.6",
+        "version": "0.1.7",
         "edition": "2024",
         "crateRenames": {
           "wadachi-spec": [
             {
-              "version": "0.1.6",
+              "version": "0.1.7",
               "rename": "wadachi_spec"
             }
           ]
@@ -2839,6 +2842,37 @@
           "optional": false,
           "target": "cfg(all(not(windows), any(rustix_use_libc, miri, not(all(target_os = \"linux\", any(target_endian = \"little\", any(target_arch = \"s390x\", target_arch = \"powerpc\")), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc\"), all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\")))))))",
           "tree": "target"
+        },
+        {
+          "name": "linux_raw_sys",
+          "package_key": "linux-raw-sys-0.12.1",
+          "kind": "normal",
+          "features": [
+            "general",
+            "ioctl",
+            "no_std"
+          ],
+          "uses_default_features": false,
+          "optional": false,
+          "target": "cfg(all(any(target_os = \"linux\", target_os = \"android\"), any(rustix_use_libc, miri, not(all(target_os = \"linux\", any(target_endian = \"little\", any(target_arch = \"s390x\", target_arch = \"powerpc\")), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc\"), all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\")))))))",
+          "tree": "target"
+        },
+        {
+          "name": "linux_raw_sys",
+          "package_key": "linux-raw-sys-0.12.1",
+          "kind": "normal",
+          "features": [
+            "auxvec",
+            "elf",
+            "errno",
+            "general",
+            "ioctl",
+            "no_std"
+          ],
+          "uses_default_features": false,
+          "optional": false,
+          "target": "cfg(all(not(rustix_use_libc), not(miri), target_os = \"linux\", any(target_endian = \"little\", any(target_arch = \"s390x\", target_arch = \"powerpc\")), any(target_arch = \"arm\", all(target_arch = \"aarch64\", target_pointer_width = \"64\"), target_arch = \"riscv64\", all(rustix_use_experimental_asm, target_arch = \"powerpc\"), all(rustix_use_experimental_asm, target_arch = \"powerpc64\"), all(rustix_use_experimental_asm, target_arch = \"s390x\"), all(rustix_use_experimental_asm, target_arch = \"mips\"), all(rustix_use_experimental_asm, target_arch = \"mips32r6\"), all(rustix_use_experimental_asm, target_arch = \"mips64\"), all(rustix_use_experimental_asm, target_arch = \"mips64r6\"), target_arch = \"x86\", all(target_arch = \"x86_64\", target_pointer_width = \"64\"))))",
+          "tree": "target"
         }
       ],
       "build_dependencies": [],
@@ -2858,6 +2892,10 @@
           }
         ],
         "linux-raw-sys": [
+          {
+            "version": "0.12.1",
+            "rename": "linux_raw_sys"
+          },
           {
             "version": "0.12.1",
             "rename": "linux_raw_sys"
@@ -2890,6 +2928,10 @@
             }
           ],
           "linux-raw-sys": [
+            {
+              "version": "0.12.1",
+              "rename": "linux_raw_sys"
+            },
             {
               "version": "0.12.1",
               "rename": "linux_raw_sys"
@@ -3717,9 +3759,9 @@
         "preBuild": "export CARGO_CRATE_NAME=version_check;"
       }
     },
-    "wadachi-spec-0.1.6": {
+    "wadachi-spec-0.1.7": {
       "name": "wadachi-spec",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "edition": "2024",
       "source": {
         "kind": "path",
@@ -3785,7 +3827,7 @@
       "crate_renames": {},
       "build_rust_crate_args": {
         "crateName": "wadachi-spec",
-        "version": "0.1.6",
+        "version": "0.1.7",
         "edition": "2024",
         "release": true,
         "libName": "wadachi_spec",
@@ -3908,10 +3950,10 @@
       }
     }
   },
-  "root_crate": "wadachi-spec-0.1.6",
+  "root_crate": "wadachi-spec-0.1.7",
   "workspace_members": [
-    "wadachi-spec-0.1.6",
-    "pleme-io-wadachi-0.1.6"
+    "wadachi-spec-0.1.7",
+    "pleme-io-wadachi-0.1.7"
   ],
   "flake_metadata": {
     "pleme-io-wadachi": {
@@ -4698,7 +4740,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "pleme-io-wadachi-0.1.6": {
+      "pleme-io-wadachi-0.1.7": {
         "runtime_dependencies": [
           {
             "name": "anyhow",
@@ -4793,7 +4835,7 @@
           },
           {
             "name": "wadachi_spec",
-            "package_key": "wadachi-spec-0.1.6",
+            "package_key": "wadachi-spec-0.1.7",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -5252,7 +5294,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "wadachi-spec-0.1.6": {
+      "wadachi-spec-0.1.7": {
         "runtime_dependencies": [
           {
             "name": "chrono",
@@ -6871,9 +6913,9 @@
       }
     }
   },
-  "cargo_lock_sha256": "0037a5de36133c80f0467c431f8fda1aca71dfa3cc3289cb0c67901154815040",
+  "cargo_lock_sha256": "9363429404706e2563206ab4512c31fe2f3a41203fe003d018f3c6c99669e688",
   "manifest_sha256": {
-    "Cargo.toml": "9918eec761e4794e352bf43a07b80238dcd4ac135442a7b08fe356c42b51e6ad",
+    "Cargo.toml": "940c80b83939df1417a4dc03a705d4c812e12c59edb6f85fab3837870337839f",
     "wadachi-spec/Cargo.toml": "cd9cde1f52689bf8c34628073a04fd738e9346a0ef713d1195b3f66996b42b73",
     "wadachi/Cargo.toml": "f5add18b03c5f3b15ab503eb87ce91ccf28352ea9b267cd0864bc507cb9764c2"
   }
