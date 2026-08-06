@@ -1,11 +1,11 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = ["wadachi-spec", "wadachi"]
 
 [workspace.package]
 version = "0.1.7"
 edition = "2024"
-rust-version = "1.89.0"
+rust-version = "1.95.0"
 license = "MIT"
 repository = "https://github.com/pleme-io/wadachi"
 homepage = "https://github.com/pleme-io/wadachi"
