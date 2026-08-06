@@ -2,7 +2,7 @@
   "schema_version": 2,
   "cargo_lock_sha256": "77838d90a3687f46c69b341615e83d707aed3985d373e24ed7254f67dad847a6",
   "manifest_sha256": {
-    "Cargo.toml": "432522f0127a4c7c6aa4ec340076672b23297abe30a170cc7ea589acfd7f55c4",
+    "Cargo.toml": "fc861c21a43afb06ab31da324b30764169fbccbdd8f7f1438a4ae10dc3620205",
     "wadachi-spec/Cargo.toml": "cd9cde1f52689bf8c34628073a04fd738e9346a0ef713d1195b3f66996b42b73",
     "wadachi/Cargo.toml": "f5add18b03c5f3b15ab503eb87ce91ccf28352ea9b267cd0864bc507cb9764c2"
   },
