@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "8a291ee1e49bd363c062e5d41ed3ddaf32221657b761c55912a2cbc5b6908b91",
+  "cargo_lock_sha256": "77838d90a3687f46c69b341615e83d707aed3985d373e24ed7254f67dad847a6",
   "manifest_sha256": {
-    "Cargo.toml": "bbbf0b0885a0bf571a5723bbf51502a534549da2562ae13f537c734309df7baa",
+    "Cargo.toml": "432522f0127a4c7c6aa4ec340076672b23297abe30a170cc7ea589acfd7f55c4",
     "wadachi-spec/Cargo.toml": "cd9cde1f52689bf8c34628073a04fd738e9346a0ef713d1195b3f66996b42b73",
     "wadachi/Cargo.toml": "f5add18b03c5f3b15ab503eb87ce91ccf28352ea9b267cd0864bc507cb9764c2"
   },
@@ -781,7 +781,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "pleme-io-wadachi-0.1.7": {
+      "pleme-io-wadachi-0.1.8": {
         "runtime_dependencies": [
           {
             "name": "anyhow",
@@ -876,7 +876,7 @@
           },
           {
             "name": "wadachi_spec",
-            "package_key": "wadachi-spec-0.1.7",
+            "package_key": "wadachi-spec-0.1.8",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -1330,7 +1330,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "wadachi-spec-0.1.7": {
+      "wadachi-spec-0.1.8": {
         "runtime_dependencies": [
           {
             "name": "chrono",
@@ -3103,7 +3103,7 @@
     "pkg-config-0.3.33": {
       "edition": "2018"
     },
-    "pleme-io-wadachi-0.1.7": {
+    "pleme-io-wadachi-0.1.8": {
       "edition": "2024",
       "lib_target": {
         "name": "pleme_io_wadachi",
@@ -3185,7 +3185,7 @@
     "version_check-0.9.5": {
       "edition": "2015"
     },
-    "wadachi-spec-0.1.7": {
+    "wadachi-spec-0.1.8": {
       "edition": "2024",
       "lib_target": {
         "name": "wadachi_spec",
