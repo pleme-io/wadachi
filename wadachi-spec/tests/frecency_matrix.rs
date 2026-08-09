@@ -5,8 +5,8 @@
 
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use wadachi_spec::{
-    DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile, MockEnvironment, RankPhase,
-    apply, apply_matched,
+    CombineKind, DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile,
+    MockEnvironment, RankPhase, apply, apply_matched,
 };
 
 fn at_day(d: u32) -> NaiveDateTime {
@@ -39,6 +39,116 @@ fn decay_matrix_is_total() {
             assert!(w.is_finite() && w >= 0.0, "{decay:?} @ {age}d → {w}");
         }
     }
+}
+
+/// Adding a `CombineKind` variant breaks THIS FUNCTION'S COMPILATION until the
+/// author states what it computes — the same E0004 gate `rank_phase_matrix_is_total`
+/// uses, which is stronger than a count assertion because it fires at build time
+/// rather than on a test run. Tier: **truly-unrepresentable**.
+#[test]
+fn combine_matrix_is_total() {
+    /// One worked row per variant: the score a two-visit candidate must get.
+    fn expected(kind: CombineKind, spec: &FrecencyRankingSpec, decayed: &[f64], freq: f64) -> f64 {
+        match kind {
+            CombineKind::RecencySumPlusFreq => {
+                spec.recency_weight * decayed.iter().sum::<f64>() + spec.freq_weight * freq
+            }
+            CombineKind::FreqTimesLatestDecay => spec.recency_weight * freq * decayed[0],
+        }
+    }
+
+    // `decayed[0]` is the most recent visit's weight in these rows.
+    let decayed = [0.5_f64, 0.25];
+    let freq = 2.0_f64;
+    for &kind in CombineKind::ALL {
+        let mut spec = FrecencyRankingSpec::skimtab_parity();
+        spec.combine = kind;
+        spec.freq_weight = 1.0;
+        let got = spec.combine_score(&decayed, freq, decayed[0]);
+        let want = expected(kind, &spec, &decayed, freq);
+        assert!(
+            (got - want).abs() < 1e-12,
+            "{kind:?}: got {got}, want {want}"
+        );
+    }
+    assert_eq!(
+        CombineKind::ALL.len(),
+        2,
+        "a CombineKind was added/removed without updating the matrix"
+    );
+    // The two combines must actually DISAGREE, or the variant is decoration.
+    let mut additive = FrecencyRankingSpec::skimtab_parity();
+    additive.freq_weight = 1.0;
+    let mut multiplicative = additive.clone();
+    multiplicative.combine = CombineKind::FreqTimesLatestDecay;
+    assert!(
+        (additive.combine_score(&decayed, freq, decayed[0])
+            - multiplicative.combine_score(&decayed, freq, decayed[0]))
+        .abs()
+            > 1e-9
+    );
+    // An unvisited candidate scores 0.0 under either combine — no visits, no
+    // latest, no score. (`FloorIndexed` is what makes an indexed dir rankable.)
+    for &kind in CombineKind::ALL {
+        let mut spec = FrecencyRankingSpec::skimtab_parity();
+        spec.combine = kind;
+        spec.freq_weight = 1.0;
+        assert!(
+            spec.combine_score(&[], 0.0, 0.0).abs() < f64::EPSILON,
+            "{kind:?}"
+        );
+    }
+}
+
+/// `praca-parity` must compute exactly `visits × bucket(age)` — praça's shipped
+/// formula. These expectations are written as literals on purpose: they are the
+/// numbers `tear/praca/src/frecency.rs` produced from its own copy of the curve,
+/// so this row is what proves adopting the spec there changes nothing.
+#[test]
+fn praca_parity_is_visits_times_last_visit_bucket() {
+    let spec = FrecencyRankingSpec::praca_parity();
+    let hour = 1.0 / 24.0;
+    // (visits, age_days, expected)
+    let rows: &[(u32, f64, f64)] = &[
+        (1, 0.0, 4.0),
+        (3, 0.5 * hour, 12.0), // < 1h  → ×4
+        (3, hour, 6.0),        // = 1h  → ×2 (the boundary is exclusive-below)
+        (5, 0.5, 10.0),        // < 1d  → ×2
+        (5, 1.0, 2.5),         // = 1d  → ×0.5
+        (2, 6.0, 1.0),         // < 1w  → ×0.5
+        (2, 7.0, 0.5),         // = 1w  → ×0.25
+        (20, 14.0, 5.0),       // old-and-frequent
+        (0, 0.0, 0.0),         // zero visits is zero, not a floor
+    ];
+    for &(visits, age_days, want) in rows {
+        let got = spec.score_counted(visits, age_days);
+        assert!(
+            (got - want).abs() < 1e-12,
+            "visits={visits} age_days={age_days}: got {got}, want {want}"
+        );
+    }
+    // And the multiplicative combine is what makes recency dominate frequency:
+    // 2 visits a minute ago outranks 20 visits two weeks ago.
+    assert!(spec.score_counted(2, hour / 60.0) > spec.score_counted(20, 14.0));
+}
+
+/// A spec body serialized before `combine` existed must still deserialize, and
+/// must adopt the additive shape the interpreter used unconditionally back then.
+#[test]
+fn a_spec_without_a_combine_field_decodes_additive() {
+    let json = r#"{
+        "name": "legacy-body",
+        "decay": "HyperbolicDays",
+        "half_life_days": 0.0,
+        "freq_weight": 0.0,
+        "recency_weight": 1.0,
+        "indexed_epsilon": 0.001,
+        "phases": [{"kind":"LoadEntries"},{"kind":"ComputeAge"},
+                   {"kind":"ApplyDecay"},{"kind":"Combine"},
+                   {"kind":"FloorIndexed"},{"kind":"SortDesc"}]
+    }"#;
+    let spec: FrecencyRankingSpec = serde_json::from_str(json).unwrap();
+    assert_eq!(spec.combine, CombineKind::RecencySumPlusFreq);
 }
 
 #[test]

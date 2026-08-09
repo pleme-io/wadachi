@@ -79,6 +79,47 @@ impl DecayKind {
     }
 }
 
+/// How a candidate's per-visit decayed weights and its visit count fold into
+/// ONE score.
+///
+/// This used to be hard-coded in the interpreter's `Combine` phase as a single
+/// additive expression, which quietly made the additive shape the *only*
+/// expressible one. It is not: praça's session ranking (and real zoxide, which
+/// `zoxide-parity` does not actually reproduce) multiplies the visit count by
+/// the decay of the *last* visit. A consumer that needs that shape and cannot
+/// select it has exactly one option left — re-implement the curve locally — and
+/// that is how `tear/praca/src/frecency.rs` came to hold a byte-identical copy
+/// of [`DecayKind::ZoxideLogBuckets`]'s thresholds and multipliers.
+///
+/// Making the combine a typed, named variant is the fix at the primitive: the
+/// shape a consumer needs is now a *selection*, never a fork.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CombineKind {
+    /// `recency_weight · Σ decayed + freq_weight · freq` — the additive shape
+    /// every instance shipped before praça's arrived, and the default so a
+    /// spec serialized without a `combine` field decodes unchanged.
+    #[default]
+    RecencySumPlusFreq,
+    /// `recency_weight · freq · decay(age of the most recent visit)` — the
+    /// multiplicative shape. This is what zoxide actually computes, and what
+    /// praça's `visits × recency_weight(age)` computes.
+    ///
+    /// `freq_weight` is **not read** under this combine: frequency enters
+    /// multiplicatively, so there is no separate additive frequency term for it
+    /// to scale. Instances selecting this set `freq_weight: 0.0` to say so out
+    /// loud rather than leaving a live-looking knob that does nothing.
+    FreqTimesLatestDecay,
+}
+
+impl CombineKind {
+    /// Every variant. The verification matrix asserts this is total, so a new
+    /// variant cannot land without a row.
+    pub const ALL: &'static [CombineKind] = &[
+        CombineKind::RecencySumPlusFreq,
+        CombineKind::FreqTimesLatestDecay,
+    ];
+}
+
 /// How well a needle matches a path — the typed vocabulary of *matching*,
 /// which used to be an untyped `path.contains(needle)` living outside the
 /// spec entirely.
@@ -319,10 +360,18 @@ pub struct FrecencyRankingSpec {
     pub decay: DecayKind,
     /// Half-life in days, used by [`DecayKind::ExpHalfLife`].
     pub half_life_days: f64,
-    /// Weight on the frequency term (visit count).
+    /// Weight on the frequency term (visit count). Read only by
+    /// [`CombineKind::RecencySumPlusFreq`] — see that variant's siblings.
     pub freq_weight: f64,
     /// Weight on the recency term (sum of decayed visit weights).
     pub recency_weight: f64,
+    /// How the decayed weights and the visit count fold into one score.
+    ///
+    /// `#[serde(default)]` so a spec serialized before the combine was modeled
+    /// still deserializes — it adopts [`CombineKind::RecencySumPlusFreq`],
+    /// which is exactly what the interpreter did unconditionally back then.
+    #[serde(default)]
+    pub combine: CombineKind,
     /// Floor score assigned to discovered-only (indexed, never-visited) dirs.
     pub indexed_epsilon: f64,
     /// How a needle matches a path, and how much each match kind is worth.
@@ -357,6 +406,44 @@ impl FrecencyRankingSpec {
         ]
     }
 
+    /// Fold one candidate's decayed per-visit weights and its visit count into
+    /// a score, per [`Self::combine`].
+    ///
+    /// **This is the only place the combine math lives.** The interpreter's
+    /// `Combine` phase calls it, and so does any consumer whose storage shape
+    /// is not a per-visit log (see [`Self::score_counted`]) — so a consumer
+    /// cannot end up re-deriving the formula from the field values.
+    ///
+    /// `decayed` are the per-visit weights, `freq` the visit count, and
+    /// `latest_decay` the decayed weight of the *most recent* visit (`0.0` when
+    /// there are no visits, which makes an unvisited candidate score `0.0`
+    /// under either combine).
+    #[must_use]
+    pub fn combine_score(&self, decayed: &[f64], freq: f64, latest_decay: f64) -> f64 {
+        match self.combine {
+            CombineKind::RecencySumPlusFreq => {
+                let recency: f64 = decayed.iter().sum();
+                self.recency_weight * recency + self.freq_weight * freq
+            }
+            CombineKind::FreqTimesLatestDecay => self.recency_weight * freq * latest_decay,
+        }
+    }
+
+    /// Score a candidate held as a **visit counter plus one timestamp** rather
+    /// than a per-visit log.
+    ///
+    /// Not every consumer stores every visit. praça's `SessionRecord` keeps
+    /// `(visits: u32, last_seen: u64)`, so `Σ decay(age_i)` has no inputs to
+    /// sum — which is precisely why the additive-only `Combine` phase could not
+    /// serve it and it grew its own copy of the curve. This is the counter+
+    /// timestamp projection of [`Self::combine_score`]: one decayed weight,
+    /// standing in for both the sum and the latest.
+    #[must_use]
+    pub fn score_counted(&self, visits: u32, age_days: f64) -> f64 {
+        let decayed = self.decay.decay(age_days, self.half_life_days);
+        self.combine_score(&[decayed], f64::from(visits), decayed)
+    }
+
     /// `Σ 1/(1+age_days)` — recency-only. Behavior-identical to skim-tab's
     /// `frecency_score`, which is what makes adopting this spec in skim-tab a
     /// behavior-preserving extraction. The fleet default.
@@ -368,6 +455,7 @@ impl FrecencyRankingSpec {
             half_life_days: 0.0,
             freq_weight: 0.0,
             recency_weight: 1.0,
+            combine: CombineKind::RecencySumPlusFreq,
             indexed_epsilon: 0.001,
             matching: MatchProfile::anchored(),
             phases: Self::canonical_phases(),
@@ -384,6 +472,7 @@ impl FrecencyRankingSpec {
             half_life_days: 30.0,
             freq_weight: 1.0,
             recency_weight: 1.0,
+            combine: CombineKind::RecencySumPlusFreq,
             indexed_epsilon: 0.001,
             matching: MatchProfile::anchored(),
             phases: Self::canonical_phases(),
@@ -402,6 +491,7 @@ impl FrecencyRankingSpec {
             half_life_days: 0.0,
             freq_weight: 0.0,
             recency_weight: 1.0,
+            combine: CombineKind::RecencySumPlusFreq,
             indexed_epsilon: 0.001,
             matching: MatchProfile::substring_legacy(),
             phases: vec![
@@ -417,6 +507,37 @@ impl FrecencyRankingSpec {
         }
     }
 
+    /// `visits × bucket(age of the last visit)` — the multiplicative combine
+    /// over zoxide's coarse time buckets. **This, not
+    /// [`Self::zoxide_parity`], is what zoxide actually computes**, and it is
+    /// the shape `tear`'s praça session ranking has always used.
+    ///
+    /// It exists as a named instance because praça needed this combine, the
+    /// spec could only express the additive one, and the gap was closed the
+    /// wrong way: `tear/praca/src/frecency.rs` hand-copied
+    /// [`DecayKind::ZoxideLogBuckets`]'s thresholds (1h / 1d / 1w) and
+    /// multipliers (4.0 / 2.0 / 0.5 / 0.25) byte-for-byte into a crate that did
+    /// not even depend on this one. Two copies of a curve drift on the first
+    /// edit that touches only one; a missing variant is the primitive's defect,
+    /// not the consumer's, so the variant landed here.
+    ///
+    /// `freq_weight` is `0.0` because [`CombineKind::FreqTimesLatestDecay`]
+    /// does not read it — frequency enters multiplicatively.
+    #[must_use]
+    pub fn praca_parity() -> Self {
+        Self {
+            name: "praca-parity".to_owned(),
+            decay: DecayKind::ZoxideLogBuckets,
+            half_life_days: 0.0,
+            freq_weight: 0.0,
+            recency_weight: 1.0,
+            combine: CombineKind::FreqTimesLatestDecay,
+            indexed_epsilon: 0.001,
+            matching: MatchProfile::anchored(),
+            phases: Self::canonical_phases(),
+        }
+    }
+
     /// Look an instance up by name (the set the authored `frecency.lisp`
     /// declares). Returns `None` for an unknown name.
     #[must_use]
@@ -425,6 +546,7 @@ impl FrecencyRankingSpec {
             "skimtab-parity" => Some(Self::skimtab_parity()),
             "zoxide-parity" => Some(Self::zoxide_parity()),
             "substring-legacy" => Some(Self::substring_legacy()),
+            "praca-parity" => Some(Self::praca_parity()),
             _ => None,
         }
     }
@@ -436,6 +558,7 @@ impl FrecencyRankingSpec {
             Self::skimtab_parity(),
             Self::zoxide_parity(),
             Self::substring_legacy(),
+            Self::praca_parity(),
         ]
     }
 }

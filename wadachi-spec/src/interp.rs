@@ -115,10 +115,16 @@ pub fn apply_matched(
             RankPhase::Combine => {
                 let set = require(working.as_mut(), "Combine")?;
                 for acc in set.iter_mut() {
-                    let recency: f64 = acc.decayed.iter().sum();
                     #[allow(clippy::cast_precision_loss)]
                     let freq = acc.freq as f64;
-                    acc.score = spec.recency_weight * recency + spec.freq_weight * freq;
+                    // The formula itself lives on the spec, not here — a
+                    // consumer whose storage is a counter+timestamp rather than
+                    // a visit log reaches the same code via `score_counted`.
+                    acc.score = spec.combine_score(
+                        &acc.decayed,
+                        freq,
+                        latest_decay(&acc.ages, &acc.decayed),
+                    );
                 }
             }
             RankPhase::FloorIndexed => {
@@ -219,6 +225,22 @@ fn require<'a>(set: Option<&'a mut Vec<Acc>>, phase: &str) -> Result<&'a mut Vec
         phase: phase.to_owned(),
         reason: "phase ran before `LoadEntries` seeded the working set".to_owned(),
     })
+}
+
+/// The decayed weight of the **most recent** visit — the input
+/// [`CombineKind::FreqTimesLatestDecay`] multiplies the visit count by.
+///
+/// Selected by smallest *age* rather than largest *weight*: "most recent" is a
+/// fact about the visit, and reading it off the weights would silently depend
+/// on every [`crate::DecayKind`] being monotonically non-increasing in age.
+/// They all are today; a future one need not be, and this must not be the line
+/// that quietly assumes it. `0.0` when there are no visits.
+fn latest_decay(ages: &[f64], decayed: &[f64]) -> f64 {
+    ages.iter()
+        .enumerate()
+        .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+        .and_then(|(i, _)| decayed.get(i).copied())
+        .unwrap_or(0.0)
 }
 
 fn age_days(now: NaiveDateTime, then: NaiveDateTime) -> f64 {
