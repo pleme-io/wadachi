@@ -1,24 +1,11 @@
 name: auto-release
 
-# Workspace auto-release shim — every push to main bumps + publishes each
-# member crate to crates.io in dependency order (wadachi-spec → wadachi).
-# Logic lives in pleme-io/substrate + pleme-io/actions. See org ★★ AUTO-RELEASE.
-
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      bump-type:
-        description: "patch | minor | major"
-        required: false
-        default: patch
 
 jobs:
   release:
-    uses: pleme-io/substrate/.github/workflows/rust-auto-release.yml@main
-    with:
-      bump-type: ${{ inputs.bump-type || 'patch' }}
-      add-paths: "Cargo.toml Cargo.lock wadachi-spec/Cargo.toml wadachi/Cargo.toml"
-      source-paths: "wadachi-spec wadachi Cargo.toml Cargo.lock"
+    uses: pleme-io/substrate/.github/workflows/cargo-auto-release.yml@main
     secrets: inherit
