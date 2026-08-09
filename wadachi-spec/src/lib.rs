@@ -8,8 +8,8 @@
 //! [`apply`] so there is exactly one formula and they cannot drift.
 //!
 //! It is authored as the pleme-io TYPED-SPEC + INTERPRETER TRIPLET:
-//! - **Typed border** — [`FrecencyRankingSpec`] + [`DecayKind`] + [`RankPhase`]
-//!   ([`spec`]).
+//! - **Typed border** — [`FrecencyRankingSpec`] + [`DecayKind`] +
+//!   [`CombineKind`] + [`RankPhase`] ([`spec`]).
 //! - **Authored Lisp spec** — `specs/frecency.lisp` declares the canonical
 //!   instances as data.
 //! - **Interpreter** — [`apply`] walks the phases against a mockable
@@ -38,5 +38,6 @@ pub mod spec;
 pub use env::{FrecencyEnvironment, MockEnvironment, RealEnvironment};
 pub use interp::{SpecError, apply, apply_matched};
 pub use spec::{
-    DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile, RankPhase, RankedDir,
+    CombineKind, DecayKind, DirEntry, FrecencyRankingSpec, MatchKind, MatchProfile, RankPhase,
+    RankedDir,
 };

@@ -13,7 +13,7 @@ shared `wadachi-spec` frecency core → consumed by frost (smart-cd), skim-cd
 ## Build & test
 
 ```bash
-cargo test            # 18 tests: frecency matrix + indexer integration + unit + doc-tests
+cargo test            # 34 tests: 18 frecency matrix + 6 indexer integration + 8 unit + 2 doc
 cargo clippy --all-targets -- -D warnings   # clean (verified on clippy 1.96 stable)
 # On bare macOS the link needs nix's libiconv on LIBRARY_PATH (chrono→CoreFoundation→iconv):
 #   export LIBRARY_PATH=$(echo /nix/store/*libiconv*/lib | tr ' ' ':')
@@ -25,7 +25,18 @@ cargo clippy --all-targets -- -D warnings   # clean (verified on clippy 1.96 sta
   TRIPLET. `apply(spec, entries, env)` is the one ranking formula; skim-tab
   adopts it (deleting its private `frecency_score`). `MockEnvironment` freezes
   the clock so tests are deterministic. `tests/frecency_matrix.rs` fails the
-  build if a `DecayKind` lands without a row.
+  build if a `DecayKind` or a `CombineKind` lands without a row.
+
+  **How the score folds is `CombineKind`, not a fixed expression.** It was one
+  hard-coded additive line in the interpreter until 2026-08-09, which made the
+  additive shape the only expressible one — so a consumer needing a different
+  one (tear's `praca`) had no move left but to re-implement the curve locally,
+  which it did, byte-for-byte. `RecencySumPlusFreq` is the old behavior and the
+  serde default; `FreqTimesLatestDecay` (`n × decay(last visit)`) is what zoxide
+  and praça actually compute, shipped as the named instance `praca-parity`.
+  `FrecencyRankingSpec::score_counted` is the entry point for a consumer that
+  stores a **visit counter + one timestamp** instead of a per-visit log — it
+  reaches the same `combine_score` the `Combine` phase does.
 - `wadachi/` — `DirStore` trait (`DirFrecencyDb` SQLite + `MemDirStore` test
   seam) + `query::{top_n,top_match}` + `WadachiConfig` + `indexer` (M4, below)
   + `wadachi` CLI.
