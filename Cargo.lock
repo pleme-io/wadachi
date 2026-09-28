@@ -533,6 +533,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "thiserror",
  "wadachi-spec",
 ]
 

@@ -26,6 +26,14 @@ pub trait DirStore {
     /// Propagates storage failures.
     fn record(&self, path: &str) -> anyhow::Result<()>;
 
+    /// Record `n` visits to `path` at `at` — the import path (zoxide's
+    /// aggregated rank becomes a visit log with its real last-access time).
+    ///
+    /// # Errors
+    /// Propagates storage failures.
+    fn record_visits_at(&self, path: &str, at: chrono::NaiveDateTime, n: u32)
+    -> anyhow::Result<()>;
+
     /// Record `path` as *discovered* by the indexer (never a real visit).
     /// Idempotent — re-discovering an existing path is a no-op.
     ///

@@ -50,12 +50,55 @@ enum Cmd {
     /// Run the ashiato-niwa background indexer daemon: one initial full walk,
     /// then a notify watcher plus gate-checked periodic re-walks.
     Indexd,
+    /// Import zoxide's database (history kept when zoxide is configured off).
+    ImportZoxide {
+        /// Path to db.zo. Default: zoxide's own location.
+        #[arg(long)]
+        db: Option<std::path::PathBuf>,
+        /// Rank the import in memory and print "score path" (zoxide's
+        /// `query -ls` shape) instead of writing the store.
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Print the zsh/bash hook for shells that are not frost. The hook never
+    /// writes to the shell's stdout or stderr.
+    Init {
+        #[arg(value_enum)]
+        shell: InitShell,
+    },
     /// Show the effective configuration for a tier (default: the active tier).
     ConfigShow {
         /// `bare` | `discovered` | `default`. Omit for the WADACHI_TIER-active tier.
         tier: Option<String>,
     },
 }
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+enum InitShell {
+    Zsh,
+    Bash,
+}
+
+const HOOK_COMMON: &str = r#"z() {
+  if [ "$#" -eq 0 ]; then builtin cd || return; return; fi
+  if [ "$#" -eq 1 ] && { [ -d "$1" ] || [ "$1" = - ]; }; then builtin cd -- "$1"; return; fi
+  __wadachi_t=$(command wadachi resolve "$*" 2>/dev/null) || { unset __wadachi_t; return 1; }
+  builtin cd -- "$__wadachi_t"; __wadachi_rc=$?; unset __wadachi_t; return $__wadachi_rc
+}
+"#;
+
+const HOOK_ZSH: &str = r#"__wadachi_hook() { command wadachi add -- "$PWD" >/dev/null 2>&1 &! }
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd __wadachi_hook
+"#;
+
+const HOOK_BASH: &str = r#"__wadachi_hook() {
+  [ "$__wadachi_pwd" = "$PWD" ] && return
+  __wadachi_pwd=$PWD
+  (command wadachi add -- "$PWD" >/dev/null 2>&1 &)
+}
+case ";${PROMPT_COMMAND:-};" in *";__wadachi_hook;"*) ;; *) PROMPT_COMMAND="__wadachi_hook;${PROMPT_COMMAND:-}" ;; esac
+"#;
 
 fn main() -> Result<()> {
     match Cli::parse().cmd {
@@ -88,6 +131,36 @@ fn main() -> Result<()> {
             let cfg = WadachiConfig::active();
             let store = DirFrecencyDb::open(&cfg.db_path)?;
             indexer::run_daemon(&store, &cfg.indexer, |pass| println!("{pass}"))?;
+        }
+        Cmd::ImportZoxide { db, dry_run } => {
+            use pleme_io_wadachi::wadachi_spec::{FrecencyRankingSpec, RankPhase};
+            use pleme_io_wadachi::{query, store::MemDirStore, zoxide};
+            let db = db
+                .or_else(zoxide::default_db_path)
+                .context("no zoxide db path: pass --db")?;
+            let dirs = zoxide::read(&db).with_context(|| db.display().to_string())?;
+            if dry_run {
+                let mem = MemDirStore::new();
+                zoxide::import(&mem, &dirs)?;
+                let mut spec = FrecencyRankingSpec::praca_parity();
+                spec.phases.retain(|p| !matches!(p, RankPhase::TopK { .. }));
+                for r in query::top_n(&mem, &spec, "", usize::MAX)? {
+                    println!("{:>6.1} {}", r.score, r.path.display());
+                }
+            } else {
+                let store = DirFrecencyDb::open(&pleme_io_wadachi::runtime_db_path())?;
+                println!("{}", zoxide::import(&store, &dirs)?);
+            }
+        }
+        Cmd::Init { shell } => {
+            print!("{HOOK_COMMON}");
+            print!(
+                "{}",
+                match shell {
+                    InitShell::Zsh => HOOK_ZSH,
+                    InitShell::Bash => HOOK_BASH,
+                }
+            );
         }
         Cmd::ConfigShow { tier } => {
             let cfg = match tier.as_deref() {

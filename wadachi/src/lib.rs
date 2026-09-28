@@ -33,6 +33,7 @@ pub mod config;
 pub mod indexer;
 pub mod query;
 pub mod store;
+pub mod zoxide;
 
 pub use config::{ConfigTier, IndexerConfig, IndexerRoot, WadachiConfig};
 pub use store::{DirFrecencyDb, DirStore, MemDirStore};

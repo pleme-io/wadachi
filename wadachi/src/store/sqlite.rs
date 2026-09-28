@@ -70,6 +70,24 @@ impl DirStore for DirFrecencyDb {
         Ok(())
     }
 
+    fn record_visits_at(
+        &self,
+        path: &str,
+        at: chrono::NaiveDateTime,
+        n: u32,
+    ) -> anyhow::Result<()> {
+        let ts = at.and_utc().timestamp();
+        let tx = self.conn.unchecked_transaction()?;
+        {
+            let mut stmt = tx.prepare("INSERT INTO visits (path, timestamp) VALUES (?1, ?2)")?;
+            for _ in 0..n {
+                stmt.execute(rusqlite::params![path, ts])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
     fn record_discovered(&self, path: &str) -> anyhow::Result<()> {
         self.conn.execute(
             "INSERT OR IGNORE INTO discovered (path) VALUES (?1)",

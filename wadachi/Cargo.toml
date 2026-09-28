@@ -27,6 +27,7 @@ path = "src/bin/wadachi.rs"
 wadachi-spec = { workspace = true }
 chrono = { workspace = true }
 serde = { workspace = true }
+thiserror = { workspace = true }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"

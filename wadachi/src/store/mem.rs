@@ -42,6 +42,13 @@ impl DirStore for MemDirStore {
         Ok(())
     }
 
+    fn record_visits_at(&self, path: &str, at: NaiveDateTime, n: u32) -> anyhow::Result<()> {
+        for _ in 0..n {
+            self.record_at(path, at);
+        }
+        Ok(())
+    }
+
     fn record_discovered(&self, path: &str) -> anyhow::Result<()> {
         self.discovered.lock().unwrap().insert(path.to_owned());
         Ok(())
