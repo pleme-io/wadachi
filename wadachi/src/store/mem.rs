@@ -49,6 +49,11 @@ impl DirStore for MemDirStore {
         Ok(())
     }
 
+    fn forget(&self, path: &str) -> anyhow::Result<()> {
+        self.visits.lock().unwrap().remove(path);
+        Ok(())
+    }
+
     fn record_discovered(&self, path: &str) -> anyhow::Result<()> {
         self.discovered.lock().unwrap().insert(path.to_owned());
         Ok(())

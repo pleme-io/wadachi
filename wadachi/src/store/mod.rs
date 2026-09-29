@@ -34,6 +34,13 @@ pub trait DirStore {
     fn record_visits_at(&self, path: &str, at: chrono::NaiveDateTime, n: u32)
     -> anyhow::Result<()>;
 
+    /// Forget every real visit to `path` (the `zoxide remove` equivalent).
+    /// Idempotent. Never touches the discovered set.
+    ///
+    /// # Errors
+    /// Propagates storage failures.
+    fn forget(&self, path: &str) -> anyhow::Result<()>;
+
     /// Record `path` as *discovered* by the indexer (never a real visit).
     /// Idempotent — re-discovering an existing path is a no-op.
     ///

@@ -23,7 +23,7 @@ use crate::store::DirStore;
 /// # Errors
 /// Propagates store / interpreter failures.
 pub fn top_n(
-    store: &impl DirStore,
+    store: &(impl DirStore + ?Sized),
     spec: &FrecencyRankingSpec,
     needle: &str,
     limit: usize,
@@ -39,7 +39,7 @@ pub fn top_n(
 /// # Errors
 /// Propagates store / interpreter failures.
 pub fn top_match(
-    store: &impl DirStore,
+    store: &(impl DirStore + ?Sized),
     spec: &FrecencyRankingSpec,
     needle: &str,
 ) -> anyhow::Result<Option<PathBuf>> {

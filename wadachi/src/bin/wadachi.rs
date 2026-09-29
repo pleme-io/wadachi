@@ -39,6 +39,9 @@ enum Cmd {
         /// Max results.
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// Print paths only (for pickers).
+        #[arg(long)]
+        paths: bool,
     },
     /// Print the single best match for NEEDLE (exit 1 if none). For smart-cd.
     Resolve {
@@ -59,12 +62,27 @@ enum Cmd {
         /// `query -ls` shape) instead of writing the store.
         #[arg(long)]
         dry_run: bool,
+        /// Import again even if this store already recorded a zoxide import.
+        #[arg(long)]
+        force: bool,
+        /// Exit 0 quietly when there is no zoxide db (activation use).
+        #[arg(long)]
+        if_present: bool,
     },
     /// Print the zsh/bash hook for shells that are not frost. The hook never
     /// writes to the shell's stdout or stderr.
     Init {
         #[arg(value_enum)]
         shell: InitShell,
+        /// Also define `NAME` (with frecency fallback) and `NAMEi`, e.g. `--cmd cd`.
+        #[arg(long)]
+        cmd: Option<pleme_io_wadachi::hook::CmdName>,
+    },
+    /// zoxide's CLI (add / query / remove / import / init) over this store.
+    #[command(disable_help_flag = true, disable_version_flag = true)]
+    Zoxide {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
     /// Show the effective configuration for a tier (default: the active tier).
     ConfigShow {
@@ -79,28 +97,24 @@ enum InitShell {
     Bash,
 }
 
-const HOOK_COMMON: &str = r#"z() {
-  if [ "$#" -eq 0 ]; then builtin cd || return; return; fi
-  if [ "$#" -eq 1 ] && { [ -d "$1" ] || [ "$1" = - ]; }; then builtin cd -- "$1"; return; fi
-  __wadachi_t=$(command wadachi resolve "$*" 2>/dev/null) || { unset __wadachi_t; return 1; }
-  builtin cd -- "$__wadachi_t"; __wadachi_rc=$?; unset __wadachi_t; return $__wadachi_rc
+fn main() {
+    if let Err(e) = real_main() {
+        let closed = e
+            .chain()
+            .filter_map(|c| c.downcast_ref::<std::io::Error>())
+            .any(|io| io.kind() == std::io::ErrorKind::BrokenPipe);
+        if closed {
+            std::process::exit(0);
+        }
+        eprintln!("wadachi: {e:#}");
+        std::process::exit(1);
+    }
 }
-"#;
 
-const HOOK_ZSH: &str = r#"__wadachi_hook() { command wadachi add -- "$PWD" >/dev/null 2>&1 &! }
-autoload -Uz add-zsh-hook
-add-zsh-hook chpwd __wadachi_hook
-"#;
-
-const HOOK_BASH: &str = r#"__wadachi_hook() {
-  [ "$__wadachi_pwd" = "$PWD" ] && return
-  __wadachi_pwd=$PWD
-  (command wadachi add -- "$PWD" >/dev/null 2>&1 &)
-}
-case ";${PROMPT_COMMAND:-};" in *";__wadachi_hook;"*) ;; *) PROMPT_COMMAND="__wadachi_hook;${PROMPT_COMMAND:-}" ;; esac
-"#;
-
-fn main() -> Result<()> {
+#[allow(clippy::too_many_lines, reason = "one flat dispatch over the subcommands")]
+fn real_main() -> Result<()> {
+    use std::io::Write;
+    let mut stdout = std::io::stdout().lock();
     match Cli::parse().cmd {
         Cmd::Add { path } => {
             let p = match path {
@@ -112,9 +126,17 @@ fn main() -> Result<()> {
             };
             pleme_io_wadachi::record(&p)?;
         }
-        Cmd::Query { needle, limit } => {
+        Cmd::Query {
+            needle,
+            limit,
+            paths,
+        } => {
             for r in pleme_io_wadachi::top_n(&needle.unwrap_or_default(), limit)? {
-                println!("{:.4}\t{}", r.score, r.path.display());
+                if paths {
+                    writeln!(stdout, "{}", r.path.display())?;
+                } else {
+                    writeln!(stdout, "{:.4}\t{}", r.score, r.path.display())?;
+                }
             }
         }
         Cmd::Resolve { needle } => match pleme_io_wadachi::resolve(&needle)? {
@@ -132,12 +154,20 @@ fn main() -> Result<()> {
             let store = DirFrecencyDb::open(&cfg.db_path)?;
             indexer::run_daemon(&store, &cfg.indexer, |pass| println!("{pass}"))?;
         }
-        Cmd::ImportZoxide { db, dry_run } => {
+        Cmd::ImportZoxide {
+            db,
+            dry_run,
+            force,
+            if_present,
+        } => {
             use pleme_io_wadachi::wadachi_spec::{FrecencyRankingSpec, RankPhase};
             use pleme_io_wadachi::{query, store::MemDirStore, zoxide};
             let db = db
                 .or_else(zoxide::default_db_path)
                 .context("no zoxide db path: pass --db")?;
+            if if_present && !db.exists() {
+                return Ok(());
+            }
             let dirs = zoxide::read(&db).with_context(|| db.display().to_string())?;
             if dry_run {
                 let mem = MemDirStore::new();
@@ -145,22 +175,37 @@ fn main() -> Result<()> {
                 let mut spec = FrecencyRankingSpec::praca_parity();
                 spec.phases.retain(|p| !matches!(p, RankPhase::TopK { .. }));
                 for r in query::top_n(&mem, &spec, "", usize::MAX)? {
-                    println!("{:>6.1} {}", r.score, r.path.display());
+                    writeln!(stdout, "{:>6.1} {}", r.score, r.path.display())?;
                 }
             } else {
                 let store = DirFrecencyDb::open(&pleme_io_wadachi::runtime_db_path())?;
-                println!("{}", zoxide::import(&store, &dirs)?);
+                if store.import_done("zoxide")? && !force {
+                    println!("zoxide already imported into this store (--force to repeat)");
+                } else {
+                    println!("{}", zoxide::import(&store, &dirs)?);
+                    store.mark_import("zoxide")?;
+                }
             }
         }
-        Cmd::Init { shell } => {
-            print!("{HOOK_COMMON}");
-            print!(
-                "{}",
-                match shell {
-                    InitShell::Zsh => HOOK_ZSH,
-                    InitShell::Bash => HOOK_BASH,
-                }
-            );
+        Cmd::Init { shell, cmd } => {
+            let shell = match shell {
+                InitShell::Zsh => pleme_io_wadachi::hook::Shell::Zsh,
+                InitShell::Bash => pleme_io_wadachi::hook::Shell::Bash,
+            };
+            print!("{}", pleme_io_wadachi::hook::render(shell, cmd.as_ref()));
+        }
+        Cmd::Zoxide { args } => {
+            let store = DirFrecencyDb::open(&pleme_io_wadachi::runtime_db_path())?;
+            let cwd = std::env::current_dir().unwrap_or_else(|_| "/".into());
+            let rc = pleme_io_wadachi::compat::run(
+                &store,
+                &pleme_io_wadachi::runtime_spec(),
+                &args,
+                &cwd,
+                &mut stdout,
+                &mut std::io::stderr(),
+            )?;
+            std::process::exit(rc);
         }
         Cmd::ConfigShow { tier } => {
             let cfg = match tier.as_deref() {

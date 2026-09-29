@@ -14,7 +14,7 @@ fn which(bin: &str) -> Option<std::path::PathBuf> {
 
 fn hook(shell: &str) -> String {
     let out = Command::new(env!("CARGO_BIN_EXE_wadachi"))
-        .args(["init", shell])
+        .args(["init", shell, "--cmd", "cd"])
         .output()
         .unwrap();
     assert!(out.status.success());
@@ -22,8 +22,8 @@ fn hook(shell: &str) -> String {
     String::from_utf8(out.stdout).unwrap()
 }
 
-const ZSH_SCRIPT: &str = r#"eval "$WADACHI_HOOK"; cd "$T"; cd /; z target-dir; [ "$PWD" = "$T" ] || cd "$T"; z no-such-needle-xyz; true; sleep 1"#;
-const BASH_SCRIPT: &str = r#"eval "$WADACHI_HOOK"; cd "$T"; __wadachi_hook; cd /; z target-dir; [ "$PWD" = "$T" ] || cd "$T"; __wadachi_hook; z no-such-needle-xyz; true; sleep 1"#;
+const ZSH_SCRIPT: &str = r#"eval "$WADACHI_HOOK"; cd "$T"; sleep 1; cd /; cd target-dir 2>/dev/null; pwd > "$OUT"; cd /; z no-such-needle-xyz; zi no-such-needle-xyz; true"#;
+const BASH_SCRIPT: &str = r#"eval "$WADACHI_HOOK"; cd "$T"; __wadachi_hook; sleep 1; cd /; cd target-dir 2>/dev/null; pwd > "$OUT"; cd /; __wadachi_hook; z no-such-needle-xyz; zi no-such-needle-xyz; true"#;
 
 #[allow(clippy::too_many_arguments)]
 fn run(
@@ -35,6 +35,7 @@ fn run(
     home: &Path,
     hook: &str,
     target: &Path,
+    out: &str,
 ) -> Vec<u8> {
     let out = Command::new(shell)
         .args(args)
@@ -45,6 +46,7 @@ fn run(
         .env("WADACHI_DB", db)
         .env("WADACHI_HOOK", hook)
         .env("T", target)
+        .env("OUT", home.join(out))
         .stdin(std::process::Stdio::null())
         .output()
         .unwrap();
@@ -93,6 +95,7 @@ fn check(shell_name: &str, args: &[&str], interactive_noise: bool) {
         tmp.path(),
         &hook,
         &target,
+        "out-with",
     );
     let without = run(
         &shell,
@@ -103,6 +106,7 @@ fn check(shell_name: &str, args: &[&str], interactive_noise: bool) {
         tmp.path(),
         &hook,
         &target,
+        "out-without",
     );
     for (label, err) in [("on PATH", with), ("missing", without)] {
         let err = String::from_utf8_lossy(&err);
@@ -118,6 +122,12 @@ fn check(shell_name: &str, args: &[&str], interactive_noise: bool) {
             "{shell_name} hook wrote stderr with wadachi {label}: {err:?}"
         );
     }
+    let jumped = std::fs::read_to_string(tmp.path().join("out-with")).unwrap();
+    assert_eq!(
+        std::path::Path::new(jumped.trim()).canonicalize().unwrap(),
+        target.canonicalize().unwrap(),
+        "{shell_name}: `cd target-dir` from / did not frecency-jump"
+    );
     let conn = rusqlite::Connection::open(&db).unwrap();
     let n: i64 = conn
         .query_row(

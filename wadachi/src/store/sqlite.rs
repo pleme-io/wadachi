@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use chrono::{DateTime, NaiveDateTime};
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 use wadachi_spec::DirEntry;
 
 use super::DirStore;
@@ -45,6 +45,32 @@ impl DirFrecencyDb {
         Ok(Self { conn })
     }
 
+    /// `true` once an import from `source` has been recorded in this store.
+    ///
+    /// # Errors
+    /// Propagates storage failures.
+    pub fn import_done(&self, source: &str) -> anyhow::Result<bool> {
+        Ok(self
+            .conn
+            .query_row("SELECT 1 FROM imports WHERE source = ?1", [source], |_| {
+                Ok(())
+            })
+            .optional()?
+            .is_some())
+    }
+
+    /// Record that an import from `source` happened.
+    ///
+    /// # Errors
+    /// Propagates storage failures.
+    pub fn mark_import(&self, source: &str) -> anyhow::Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO imports (source) VALUES (?1)",
+            [source],
+        )?;
+        Ok(())
+    }
+
     fn migrate(conn: &Connection) -> anyhow::Result<()> {
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS visits (
@@ -55,6 +81,10 @@ impl DirFrecencyDb {
              CREATE TABLE IF NOT EXISTS discovered (
                  path       TEXT    PRIMARY KEY,
                  first_seen INTEGER NOT NULL DEFAULT (unixepoch())
+             );
+             CREATE TABLE IF NOT EXISTS imports (
+                 source TEXT    PRIMARY KEY,
+                 at     INTEGER NOT NULL DEFAULT (unixepoch())
              );
              CREATE INDEX IF NOT EXISTS idx_visits_path ON visits(path);
              CREATE INDEX IF NOT EXISTS idx_visits_ts   ON visits(timestamp);",
@@ -85,6 +115,12 @@ impl DirStore for DirFrecencyDb {
             }
         }
         tx.commit()?;
+        Ok(())
+    }
+
+    fn forget(&self, path: &str) -> anyhow::Result<()> {
+        self.conn
+            .execute("DELETE FROM visits WHERE path = ?1", [path])?;
         Ok(())
     }
 

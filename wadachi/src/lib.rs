@@ -29,7 +29,9 @@
 //! assert_eq!(hit.unwrap().to_str().unwrap(), "/code/github/pleme-io/wadachi");
 //! ```
 
+pub mod compat;
 pub mod config;
+pub mod hook;
 pub mod indexer;
 pub mod query;
 pub mod store;
@@ -53,7 +55,7 @@ pub fn runtime_db_path() -> PathBuf {
 }
 
 /// The ranking spec the hot path uses: `WADACHI_RANKING` or the fleet default.
-fn runtime_spec() -> FrecencyRankingSpec {
+pub fn runtime_spec() -> FrecencyRankingSpec {
     std::env::var("WADACHI_RANKING")
         .ok()
         .and_then(|r| FrecencyRankingSpec::by_name(&r))
