@@ -15,6 +15,10 @@
 //! - **Interpreter** — [`apply`] walks the phases against a mockable
 //!   [`FrecencyEnvironment`] ([`interp`], [`env`]).
 //!
+//! Text entries (command lines, prompts) rank through [`usage`], which borrows
+//! only the decay: a command line is not a path, so it never meets the path
+//! matcher.
+//!
 //! ```
 //! use wadachi_spec::{apply, FrecencyRankingSpec, DirEntry, MockEnvironment};
 //! use chrono::NaiveDate;
@@ -34,6 +38,7 @@
 pub mod env;
 pub mod interp;
 pub mod spec;
+pub mod usage;
 
 pub use env::{FrecencyEnvironment, MockEnvironment, RealEnvironment};
 pub use interp::{SpecError, apply, apply_matched};

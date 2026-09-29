@@ -275,10 +275,7 @@ impl MatchProfile {
         let ancestors = &components[..components.len().saturating_sub(1)];
         let mut cursor = 0usize;
         for frag in leading {
-            match ancestors[cursor..].iter().position(|c| c.contains(frag)) {
-                Some(hit) => cursor += hit + 1,
-                None => return None,
-            }
+            cursor += ancestors[cursor..].iter().position(|c| c.contains(frag))? + 1;
         }
 
         if basename == last {
