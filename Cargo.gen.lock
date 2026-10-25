@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "cargo_lock_sha256": "7a256abe54d27bfe14dacd3e0e4a0d0f052dcc6c95198aa623a55152fed73e28",
+  "cargo_lock_sha256": "6fce912a50c1e14ee1a7be62964630bc255b1f9aab0db0974cad101e2b63c672",
   "manifest_sha256": {
     "Cargo.toml": "1c64238774931a78f3f3f5cd80cef968c2bda08c21153b332820241e67fdeebf",
     "wadachi-spec/Cargo.toml": "cd9cde1f52689bf8c34628073a04fd738e9346a0ef713d1195b3f66996b42b73",
@@ -12,7 +12,7 @@
         "runtime_dependencies": [
           {
             "name": "cfg_if",
-            "package_key": "cfg-if-1.0.4",
+            "package_key": "cfg-if-1.0.5",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -34,7 +34,7 @@
           },
           {
             "name": "zerocopy",
-            "package_key": "zerocopy-0.8.55",
+            "package_key": "zerocopy-0.8.63",
             "kind": "normal",
             "features": [
               "simd"
@@ -174,18 +174,18 @@
         "build_dependencies": [],
         "features": []
       },
-      "bitflags-2.13.1": {
+      "bitflags-2.13.2": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": [
           "std"
         ]
       },
-      "cc-1.4.0": {
+      "cc-1.10.0": {
         "runtime_dependencies": [
           {
             "name": "find_msvc_tools",
-            "package_key": "find-msvc-tools-0.1.9",
+            "package_key": "find-msvc-tools-0.1.15",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -207,7 +207,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "cfg-if-1.0.4": {
+      "cfg-if-1.0.5": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -381,7 +381,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.9",
             "kind": "normal",
             "features": [
               "full"
@@ -427,7 +427,7 @@
         "runtime_dependencies": [
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -453,7 +453,7 @@
         "runtime_dependencies": [
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -463,7 +463,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -473,7 +473,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -509,7 +509,7 @@
           "std"
         ]
       },
-      "find-msvc-tools-0.1.9": {
+      "find-msvc-tools-0.1.15": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -518,7 +518,7 @@
         "runtime_dependencies": [
           {
             "name": "cfg_if",
-            "package_key": "cfg-if-1.0.4",
+            "package_key": "cfg-if-1.0.5",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -528,7 +528,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -538,7 +538,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -548,7 +548,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -558,7 +558,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -568,7 +568,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -578,7 +578,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -588,7 +588,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -598,7 +598,7 @@
           },
           {
             "name": "libc",
-            "package_key": "libc-0.2.189",
+            "package_key": "libc-0.2.191",
             "kind": "normal",
             "features": [],
             "uses_default_features": false,
@@ -665,7 +665,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "libc-0.2.189": {
+      "libc-0.2.191": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": [
@@ -678,7 +678,7 @@
         "build_dependencies": [
           {
             "name": "cc",
-            "package_key": "cc-1.4.0",
+            "package_key": "cc-1.10.0",
             "kind": "build",
             "features": [],
             "uses_default_features": true,
@@ -717,7 +717,7 @@
           "vcpkg"
         ]
       },
-      "log-0.4.33": {
+      "log-0.4.34": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -734,7 +734,7 @@
         "runtime_dependencies": [
           {
             "name": "bitflags",
-            "package_key": "bitflags-2.13.1",
+            "package_key": "bitflags-2.13.2",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -902,7 +902,7 @@
         "runtime_dependencies": [
           {
             "name": "unicode_ident",
-            "package_key": "unicode-ident-1.0.24",
+            "package_key": "unicode-ident-1.0.27",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -940,7 +940,7 @@
         "runtime_dependencies": [
           {
             "name": "bitflags",
-            "package_key": "bitflags-2.13.1",
+            "package_key": "bitflags-2.13.2",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -990,7 +990,7 @@
           },
           {
             "name": "smallvec",
-            "package_key": "smallvec-1.15.2",
+            "package_key": "smallvec-1.16.4",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -1079,7 +1079,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.9",
             "kind": "normal",
             "features": [
               "clone-impls",
@@ -1156,7 +1156,7 @@
           "std"
         ]
       },
-      "smallvec-1.15.2": {
+      "smallvec-1.16.4": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -1166,7 +1166,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "syn-3.0.3": {
+      "syn-3.0.9": {
         "runtime_dependencies": [
           {
             "name": "proc_macro2",
@@ -1190,7 +1190,7 @@
           },
           {
             "name": "unicode_ident",
-            "package_key": "unicode-ident-1.0.24",
+            "package_key": "unicode-ident-1.0.27",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -1306,7 +1306,7 @@
           },
           {
             "name": "syn",
-            "package_key": "syn-3.0.3",
+            "package_key": "syn-3.0.9",
             "kind": "normal",
             "features": [],
             "uses_default_features": true,
@@ -1318,7 +1318,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "unicode-ident-1.0.24": {
+      "unicode-ident-1.0.27": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": []
@@ -1407,7 +1407,7 @@
         "build_dependencies": [],
         "features": []
       },
-      "zerocopy-0.8.55": {
+      "zerocopy-0.8.63": {
         "runtime_dependencies": [],
         "build_dependencies": [],
         "features": [
@@ -1435,7 +1435,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1469,7 +1469,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1489,7 +1489,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1499,7 +1499,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1538,7 +1538,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -1578,7 +1578,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -1588,7 +1588,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -1620,7 +1620,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1640,7 +1640,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1656,7 +1656,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1684,7 +1684,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1694,7 +1694,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1725,7 +1725,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1735,7 +1735,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1798,7 +1798,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -1838,7 +1838,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -1848,7 +1848,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -1911,7 +1911,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1931,7 +1931,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1947,7 +1947,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1975,7 +1975,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -1985,7 +1985,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2016,7 +2016,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2026,7 +2026,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2089,7 +2089,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2129,7 +2129,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2139,7 +2139,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2203,7 +2203,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2237,7 +2237,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2257,7 +2257,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2267,7 +2267,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2306,7 +2306,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2346,7 +2346,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2356,7 +2356,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2388,7 +2388,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2408,7 +2408,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2424,7 +2424,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2452,7 +2452,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2462,7 +2462,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2493,7 +2493,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2503,7 +2503,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2566,7 +2566,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2606,7 +2606,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2616,7 +2616,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2679,7 +2679,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2699,7 +2699,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2715,7 +2715,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2743,7 +2743,7 @@
             "runtime_dependencies": [
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2753,7 +2753,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2784,7 +2784,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2794,7 +2794,7 @@
               },
               {
                 "name": "log",
-                "package_key": "log-0.4.33",
+                "package_key": "log-0.4.34",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": true,
@@ -2857,7 +2857,7 @@
             "runtime_dependencies": [
               {
                 "name": "bitflags",
-                "package_key": "bitflags-2.13.1",
+                "package_key": "bitflags-2.13.2",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2897,7 +2897,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2907,7 +2907,7 @@
               },
               {
                 "name": "libc",
-                "package_key": "libc-0.2.189",
+                "package_key": "libc-0.2.191",
                 "kind": "normal",
                 "features": [],
                 "uses_default_features": false,
@@ -2983,13 +2983,13 @@
     "autocfg-1.5.1": {
       "edition": "2015"
     },
-    "bitflags-2.13.1": {
+    "bitflags-2.13.2": {
       "edition": "2021"
     },
-    "cc-1.4.0": {
-      "edition": "2018"
+    "cc-1.10.0": {
+      "edition": "2021"
     },
-    "cfg-if-1.0.4": {
+    "cfg-if-1.0.5": {
       "edition": "2018"
     },
     "chrono-0.4.45": {
@@ -3038,8 +3038,8 @@
     "fastrand-2.5.0": {
       "edition": "2018"
     },
-    "find-msvc-tools-0.1.9": {
-      "edition": "2018"
+    "find-msvc-tools-0.1.15": {
+      "edition": "2021"
     },
     "fsevent-sys-4.1.0": {
       "edition": "2018"
@@ -3073,7 +3073,7 @@
     "itoa-1.0.18": {
       "edition": "2021"
     },
-    "libc-0.2.189": {
+    "libc-0.2.191": {
       "edition": "2021",
       "build_script": "build.rs"
     },
@@ -3085,7 +3085,7 @@
     "linux-raw-sys-0.12.1": {
       "edition": "2021"
     },
-    "log-0.4.33": {
+    "log-0.4.34": {
       "edition": "2021"
     },
     "memchr-2.8.3": {
@@ -3163,13 +3163,13 @@
     "shlex-2.0.1": {
       "edition": "2018"
     },
-    "smallvec-1.15.2": {
+    "smallvec-1.16.4": {
       "edition": "2018"
     },
     "strsim-0.11.1": {
       "edition": "2015"
     },
-    "syn-3.0.3": {
+    "syn-3.0.9": {
       "edition": "2021"
     },
     "tempfile-3.27.0": {
@@ -3183,7 +3183,7 @@
       "edition": "2021",
       "proc_macro": true
     },
-    "unicode-ident-1.0.24": {
+    "unicode-ident-1.0.27": {
       "edition": "2021"
     },
     "utf8parse-0.2.2": {
@@ -3205,7 +3205,7 @@
     "walkdir-2.5.0": {
       "edition": "2018"
     },
-    "zerocopy-0.8.55": {
+    "zerocopy-0.8.63": {
       "edition": "2021",
       "build_script": "build.rs"
     },
